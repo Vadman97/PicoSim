@@ -10,19 +10,25 @@ class Memory(object):
             self.values = [default if default is not None
                            else bool(random.randint(0, 1)) for _ in range(0, self.width)]
             self.max_value = math.pow(2, self.width) - 1
+            self.min_value = -math.pow(2, self.width - 1)
 
         @property
         def value(self) -> int:
+            """returns the decimal value of the memory row"""
             return sum([int(v) * (1 << (len(self.values) - 1 - index))
                         for index, v in enumerate(self.values)])
 
         def set_value(self, value: int) -> None:
-            if value > self.max_value:
+            """set the memory row value to a decimal value, converted to two's comp if negative"""
+            if value > self.max_value or value < self.min_value:
                 raise OverflowError
-            # skip over the 0b prefix with 2:
-            binary = bin(value)[2:]
-            if len(binary) > self.width:
-                raise IndexError
+            # if negative, compute two's comp
+            if value < 0:
+                # skip over the -0b prefix with 3:
+                binary = bin(abs(value) - (1 << self.width))[3:]
+            else:
+                # skip over the 0b prefix with 2:
+                binary = bin(value)[2:]
             # 0 extend with itertools chain
             self.values = [bool(int(x)) for x in itertools.chain(
                 [False for _ in range(0, len(self.values) - len(binary))], binary)]
