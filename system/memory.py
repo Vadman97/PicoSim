@@ -1,0 +1,1 @@
+REGISTERS = {'s' + str(x): x for x in range(0x0, 0xF)}
