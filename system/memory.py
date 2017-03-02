@@ -1,6 +1,7 @@
 import itertools
 import math
 import random
+from typing import Dict, List
 
 
 class Memory(object):
@@ -33,12 +34,12 @@ class Memory(object):
             self.values = [bool(int(x)) for x in itertools.chain(
                 [False for _ in range(0, len(self.values) - len(binary))], binary)]
 
-    PROGRAM_WIDTH = 18
-    PROGRAM_LENGTH = 1024
-    DATA_WIDTH = 6
-    DATA_LENGTH = 64
-    REGISTER_WIDTH = 16
-    NUM_REGISTERS = 16
+    PROGRAM_WIDTH = 18  # type: int
+    PROGRAM_LENGTH = 1024  # type: int
+    DATA_WIDTH = 6  # type: int
+    DATA_LENGTH = 64  # type: int
+    REGISTER_WIDTH = 16  # type: int
+    NUM_REGISTERS = 16  # type: int
 
     def __init__(self):
         self._REGISTERS = Memory.init_reg(Memory.REGISTER_WIDTH, Memory.NUM_REGISTERS)
@@ -46,21 +47,21 @@ class Memory(object):
         self._DATA_MEMORY = Memory.init_mem(Memory.DATA_WIDTH, Memory.DATA_LENGTH)
 
     @staticmethod
-    def init_reg(width: int, num_reg: int) -> {str: MemoryRow}:
+    def init_reg(width: int, num_reg: int) -> Dict[str, MemoryRow]:
         return {'s%0.1x' % x: Memory.MemoryRow(width, default=False) for x in range(0, num_reg)}
 
     @staticmethod
-    def init_mem(width: int, length: int) -> [MemoryRow]:
+    def init_mem(width: int, length: int) -> List[MemoryRow]:
         return [Memory.MemoryRow(width) for _ in range(0, length)]
 
-    def fetch_register(self, reg_name: str) -> MemoryRow:
-        return self._REGISTERS[reg_name.lower()]
+    def fetch_register(self, reg_name: str) -> int:
+        return self._REGISTERS[reg_name.lower()].value
 
-    def fetch_data(self, address: int) -> MemoryRow:
-        return self._DATA_MEMORY[address]
+    def fetch_data(self, address: int) -> int:
+        return self._DATA_MEMORY[address].value
 
-    def fetch_data_reg(self, register: str) -> MemoryRow:
-        return self._DATA_MEMORY[self.fetch_register(register).value]
+    def fetch_data_reg(self, register: str) -> int:
+        return self._DATA_MEMORY[self.fetch_register(register)].value
 
     def set_register(self, reg_name: str, value: int) -> None:
         if not isinstance(value, int):
@@ -75,4 +76,4 @@ class Memory(object):
     def store_data_reg(self, register: str, value: int) -> None:
         if not isinstance(value, int):
             raise Exception("Value must be a number")
-        self._DATA_MEMORY[self.fetch_register(register).value].set_value(value)
+        self._DATA_MEMORY[self.fetch_register(register)].set_value(value)
