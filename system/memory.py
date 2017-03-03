@@ -21,8 +21,10 @@ class Memory(object):
 
         def set_value(self, value: int) -> None:
             """set the memory row value to a decimal value, converted to two's comp if negative"""
-            if value > self.max_value or value < self.min_value:
-                raise OverflowError
+            if value > self.max_value:
+                value = int(value % (self.max_value + 1))
+            if value < self.min_value:
+                value = int(value % (self.min_value - 1))
             # if negative, compute two's comp
             if value < 0:
                 # skip over the -0b prefix with 3:
@@ -59,6 +61,9 @@ class Memory(object):
 
     def fetch_data(self, address: int) -> int:
         return self._DATA_MEMORY[address].value
+
+    def fetch_program(self, address: int) -> int:
+        return self._PROGRAM_MEMORY[address].value
 
     def fetch_data_reg(self, register: str) -> int:
         return self._DATA_MEMORY[self.fetch_register(register)].value

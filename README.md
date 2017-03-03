@@ -9,3 +9,5 @@ System: ProgramManager(Program Counter, state machine?),
         IO (simulated portin/portout address-controlled multiplexing)
 
 Debugging / execution should control instruction exec rate via ProgramManager
+
+Seems like the simulation is on the order of 1000x slower than FPGA.
