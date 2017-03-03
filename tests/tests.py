@@ -1,8 +1,10 @@
 import random
 import unittest
+import operator
 
 import ops.operations as op
 from system.memory import Memory
+from system.processor import Processor
 
 
 class MemoryTests(unittest.TestCase):
@@ -53,28 +55,37 @@ class MemoryTests(unittest.TestCase):
 
 
 class OperationTests(unittest.TestCase):
+    OPS = [
+        operator.and_,
+        operator.add,
+        operator.or_
+    ]
+
     def setUp(self):
-        self.mem = Memory()
+        self.proc = Processor()
 
-    def test_add_literal(self):
-        self.mem.set_register('s1', 62)
-        op.AddLiteral('s1', 8).exec(self.mem)
-        self.assertEqual(self.mem.fetch_register('s1'), 70)
+    def test_all_ops_stress(self):
+        for o in OperationTests.OPS:
+            v1 = 1000  # random.randint(0, 65535)
+            v2 = 2345  # random.randint(0, 65535)
+            self.proc.memory.set_register('s1', v1)
+            self.proc.memory.set_register('s2', v2)
+            op.ArithmeticOperation(o, 's1', ['s2']).exec(self.proc)
+            self.assertEqual(self.proc.memory.fetch_register('s1'), o(v1, v2))
 
-    def test_add_reg(self):
-        self.mem.set_register('s1', 62)
-        self.mem.set_register('s2', 843)
-        op.AddRegister('s1', 's2').exec(self.mem)
-        self.assertEqual(self.mem.fetch_register('s1'), 905)
+            v1 = random.randint(0, 65535)
+            c1 = random.randint(0, 65535)
+            self.proc.memory.set_register('s1', v1)
+            op.ArithmeticOperation(o, 's1', [c1]).exec(self.proc)
+            self.assertEqual(self.proc.memory.fetch_register('s1'), o(v1, c1))
 
-    def test_add_literal_stress(self):
-        s = 50
-        self.mem.set_register('s1', s)
-        for i in range(0, 32000):
-            v = random.randint(1, 10)
-            s += v
-            op.AddLiteral('s1', v).exec(self.mem)
-            self.assertEqual(self.mem.fetch_register('s1'), s % 65536)
+            s = 50
+            self.proc.memory.set_register('s1', s)
+            for i in range(0, 10000):
+                v = random.randint(1, 10)
+                op.ArithmeticOperation(o, 's1', [v]).exec(self.proc)
+                s = o(s, v)
+                self.assertEqual(self.proc.memory.fetch_register('s1'), s % 65536)
 
 
 if __name__ == '__main__':

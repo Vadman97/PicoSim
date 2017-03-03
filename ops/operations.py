@@ -1,19 +1,27 @@
-from system.memory import Memory
+from functools import reduce
+
+from system.processor import Processor
+from typing import List
 
 
-class AddLiteral(object):
-    def __init__(self, register: str, literal: int):
-        self.register = register
-        self.literal = literal
-
-    def exec(self, mem: Memory):
-        mem.set_register(self.register, mem.fetch_register(self.register) + self.literal)
+class Instruction(object):
+    def exec(self, proc: Processor):
+        pass
 
 
-class AddRegister(object):
-    def __init__(self, reg1: str, reg2: str):
-        self.reg1 = reg1
-        self.reg2 = reg2
+class ArithmeticOperation(Instruction):
+    def __init__(self, op, reg: str, args: List):
+        self.operator = op
+        self.register = reg
+        self.args = [reg] + args
 
-    def exec(self, mem: Memory):
-        mem.set_register(self.reg1, mem.fetch_register(self.reg1) + mem.fetch_register(self.reg2))
+    def exec(self, proc: Processor):
+        def expand(arg):
+            if not isinstance(arg, int) and 's' in arg:
+                return proc.memory.fetch_register(arg)
+            else:
+                return arg
+
+        self.args = map(expand, self.args)  # load register values
+        val = reduce(self.operator, self.args)  # apply operator
+        proc.memory.set_register(self.register, val)  # set result

@@ -45,7 +45,6 @@ class Memory(object):
 
     def __init__(self):
         self._REGISTERS = Memory.init_reg(Memory.REGISTER_WIDTH, Memory.NUM_REGISTERS)
-        self._PROGRAM_MEMORY = Memory.init_mem(Memory.PROGRAM_WIDTH, Memory.PROGRAM_LENGTH)
         self._DATA_MEMORY = Memory.init_mem(Memory.DATA_WIDTH, Memory.DATA_LENGTH)
 
     @staticmethod
@@ -61,9 +60,6 @@ class Memory(object):
 
     def fetch_data(self, address: int) -> int:
         return self._DATA_MEMORY[address].value
-
-    def fetch_program(self, address: int) -> int:
-        return self._PROGRAM_MEMORY[address].value
 
     def fetch_data_reg(self, register: str) -> int:
         return self._DATA_MEMORY[self.fetch_register(register)].value
