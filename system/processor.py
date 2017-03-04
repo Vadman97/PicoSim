@@ -8,10 +8,21 @@ class Processor(object):
         self.manager = ProgramManager()
         self.instructions = []
         self._carry = 0
+        self._zero = 0
 
     @property
     def carry(self) -> int:
         return self._carry
+
+    def set_carry(self, val: int):
+        self._carry = val
+
+    @property
+    def zero(self) -> int:
+        return self._zero
+
+    def set_zero(self, val: int):
+        self._zero = val
 
     @property
     def memory(self) -> Memory:

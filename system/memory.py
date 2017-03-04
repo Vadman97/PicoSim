@@ -6,7 +6,7 @@ from typing import Dict, List
 
 class Memory(object):
     class MemoryRow(object):
-        def __init__(self, width, default=None):
+        def __init__(self, width: int, default: bool = None) -> None:
             self.width = width
             self.values = [default if default is not None
                            else bool(random.randint(0, 1)) for _ in range(0, self.width)]
@@ -38,14 +38,14 @@ class Memory(object):
 
     PROGRAM_WIDTH = 18  # type: int
     PROGRAM_LENGTH = 1024  # type: int
-    DATA_WIDTH = 6  # type: int
+    DATA_WIDTH = 8  # type: int
     DATA_LENGTH = 64  # type: int
-    REGISTER_WIDTH = 16  # type: int
+    REGISTER_WIDTH = 8  # type: int
     NUM_REGISTERS = 16  # type: int
 
     def __init__(self):
-        self._REGISTERS = Memory.init_reg(Memory.REGISTER_WIDTH, Memory.NUM_REGISTERS)
-        self._DATA_MEMORY = Memory.init_mem(Memory.DATA_WIDTH, Memory.DATA_LENGTH)
+        self.REGISTERS = Memory.init_reg(Memory.REGISTER_WIDTH, Memory.NUM_REGISTERS)
+        self.DATA_MEMORY = Memory.init_mem(Memory.DATA_WIDTH, Memory.DATA_LENGTH)
 
     @staticmethod
     def init_reg(width: int, num_reg: int) -> Dict[str, MemoryRow]:
@@ -56,25 +56,25 @@ class Memory(object):
         return [Memory.MemoryRow(width) for _ in range(0, length)]
 
     def fetch_register(self, reg_name: str) -> int:
-        return self._REGISTERS[reg_name.lower()].value
+        return self.REGISTERS[reg_name.lower()].value
 
     def fetch_data(self, address: int) -> int:
-        return self._DATA_MEMORY[address].value
+        return self.DATA_MEMORY[address].value
 
     def fetch_data_reg(self, register: str) -> int:
-        return self._DATA_MEMORY[self.fetch_register(register)].value
+        return self.DATA_MEMORY[self.fetch_register(register)].value
 
     def set_register(self, reg_name: str, value: int) -> None:
         if not isinstance(value, int):
             raise Exception("Value must be a number")
-        self._REGISTERS[reg_name.lower()].set_value(value)
+        self.REGISTERS[reg_name.lower()].set_value(value)
 
     def store_data(self, address: int, value: int) -> None:
         if not isinstance(value, int):
             raise Exception("Value must be a number")
-        self._DATA_MEMORY[address].set_value(value)
+        self.DATA_MEMORY[address].set_value(value)
 
     def store_data_reg(self, register: str, value: int) -> None:
         if not isinstance(value, int):
             raise Exception("Value must be a number")
-        self._DATA_MEMORY[self.fetch_register(register)].set_value(value)
+        self.DATA_MEMORY[self.fetch_register(register)].set_value(value)
