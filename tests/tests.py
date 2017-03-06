@@ -10,7 +10,7 @@ MIN = -128
 
 
 def make_positive(a: int) -> int:
-    s = a if a > 0 else a + (1 << 16)
+    s = a if a > 0 else a + (1 << 8)
     return s % (MAX + 1)
 
 
@@ -63,6 +63,8 @@ class MemoryTests(unittest.TestCase):
 class OperationTests(unittest.TestCase):
     def setUp(self):
         self.proc = Processor()
+        self.v1 = random.randint(0, MAX)
+        self.r = Memory.MemoryRow(Memory.REGISTER_WIDTH)
 
     def test_arithmetic_ops_stress(self):
         for o in op.ArithmeticOperation.OPS.values():
@@ -100,22 +102,15 @@ class OperationTests(unittest.TestCase):
 
     # TODO(Vadim): Test against validated bitwise operators for the rest
     def test_bitwise_ops(self):
-        v1 = 243 # random.randint(0, MAX)
-        r = Memory.MemoryRow(Memory.REGISTER_WIDTH)
+        c = ((self.v1 << 1) | (self.v1 >> (-1 & (8 * 8 - 1)))) % MAX
+        self.r.set_value(self.v1)
+        self.r.values = op.BitwiseOperation.rotate_left(self.r)[0]
+        self.assertEqual(self.r.value, c)
 
-        c = ((v1 << 1) | (v1 >> (-1 & (8 * 8 - 1)))) % MAX
-        r.set_value(v1)
-        r.values = op.BitwiseOperation.rotate_left(r)[0]
-        self.assertEqual(r.value, c)
-
-        print(v1)
-        c = ((v1 >> 1) | (v1 << 8)) % MAX
-        print(c)
-        r.set_value(v1)
-        print(r.values)
-        r.values = op.BitwiseOperation.rotate_right(r)[0]
-        print(r.values)
-        self.assertEqual(r.value, c)
+        c = ((self.v1 >> 1) | ((self.v1 & 1) << 7))
+        self.r.set_value(self.v1)
+        self.r.values = op.BitwiseOperation.rotate_right(self.r)[0]
+        self.assertEqual(self.r.value, c)
 
 
 if __name__ == '__main__':
