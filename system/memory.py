@@ -1,3 +1,7 @@
+"""
+PicoSim - Xilinx PicoBlaze Assembly Simulator in Python
+Copyright (C) 2017  Vadim Korolik - see LICENCE
+"""
 import itertools
 import math
 import random
@@ -42,10 +46,15 @@ class Memory(object):
     DATA_LENGTH = 64  # type: int
     REGISTER_WIDTH = 8  # type: int
     NUM_REGISTERS = 16  # type: int
+    STACK_WIDTH = 10  # type: int
+    STACK_LENGTH = 31  # type: int
 
     def __init__(self):
         self.REGISTERS = Memory.init_reg(Memory.REGISTER_WIDTH, Memory.NUM_REGISTERS)
         self.DATA_MEMORY = Memory.init_mem(Memory.DATA_WIDTH, Memory.DATA_LENGTH)
+        self.STACK = Memory.init_mem(Memory.STACK_WIDTH, Memory.STACK_LENGTH)
+
+        self.stack_pointer = 0  # type: int
 
     @staticmethod
     def init_reg(width: int, num_reg: int) -> Dict[str, MemoryRow]:
@@ -78,3 +87,15 @@ class Memory(object):
         if not isinstance(value, int):
             raise Exception("Value must be a number")
         self.DATA_MEMORY[self.fetch_register(register)].set_value(value)
+
+    def push_stack(self, value: int) -> None:
+        if self.stack_pointer > self.STACK_LENGTH - 1:
+            raise IndexError("Stack overflow")
+        self.STACK[self.stack_pointer].set_value(value)
+        self.stack_pointer += 1
+
+    def pop_stack(self) -> int:
+        if self.stack_pointer <= 0:
+            raise IndexError("Stack underflow")
+        self.stack_pointer -= 1
+        return self.STACK[self.stack_pointer].value

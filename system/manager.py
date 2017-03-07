@@ -1,3 +1,7 @@
+"""
+PicoSim - Xilinx PicoBlaze Assembly Simulator in Python
+Copyright (C) 2017  Vadim Korolik - see LICENCE
+"""
 from system.memory import Memory
 
 
@@ -10,7 +14,7 @@ class ProgramManager(object):
         return self._pc
 
     def next(self):
-        self._pc += Memory.PROGRAM_WIDTH
+        self._pc = (self._pc + 1) % Memory.PROGRAM_LENGTH
 
     def jump(self, address: hex):
         self._pc = address % Memory.PROGRAM_LENGTH

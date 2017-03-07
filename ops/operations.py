@@ -1,3 +1,7 @@
+"""
+PicoSim - Xilinx PicoBlaze Assembly Simulator in Python
+Copyright (C) 2017  Vadim Korolik - see LICENCE
+"""
 import operator
 from functools import reduce
 from typing import List, Dict, Callable, Tuple
@@ -39,8 +43,8 @@ class BitwiseOperation(Instruction):
     @staticmethod
     def shift_left_x(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
-        bits.append(register_row.values[0])
-        return bits, register_row.values[0], -1
+        bits.append(register_row.values[7])
+        return bits, register_row.values[7], -1
 
     @staticmethod
     def shift_right_zero(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
@@ -56,9 +60,9 @@ class BitwiseOperation(Instruction):
 
     @staticmethod
     def shift_right_x(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
-        bits = [register_row.values[7]]
+        bits = [register_row.values[0]]
         bits += register_row.values[0:7]
-        return bits, register_row.values[7], -1
+        return bits, register_row.values[0], -1
 
     @staticmethod
     def shift_left_a(register_row: Memory.MemoryRow, carry: bool = False) -> Tuple[List[bool], bool, int]:
@@ -104,6 +108,9 @@ class BitwiseOperation(Instruction):
         if zero != -1:
             self.proc.set_zero(bool(zero))
 
+        # increment pc
+        self.proc.manager.next()
+
 
 def addc(a: int, b: int) -> int:
     return operator.add(a, b)
@@ -126,7 +133,8 @@ class ArithmeticOperation(Instruction):
     def __init__(self, op: Callable[[int, int], int], reg: str, args: List):
         self.operator = op
         self.register = reg
-        self.args = [reg] + args
+        self.o_args = [reg] + args
+        self.args = []  # type: List[int]
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):
@@ -137,10 +145,95 @@ class ArithmeticOperation(Instruction):
                 return arg
 
         self.proc = proc
-        self.args = map(expand, self.args)  # load register values
+        self.args = map(expand, self.o_args)  # load register values
         val = reduce(self.operator, self.args)  # apply operator
         if operator is addc or operator is subc:
             val += self.proc.carry
         proc.memory.set_register(self.register, val)  # set result
         if operator is operator.and_ or operator is operator.or_:
             self.proc.set_carry(False)
+
+        # increment pc
+        self.proc.manager.next()
+
+
+class FlowOperation(Instruction):
+    def call(self):
+        self.proc.memory.push_stack(self.proc.manager.pc)
+        self.jump()
+
+    def call_c(self):
+        if self.proc.carry is True:
+            self.call()
+
+    def call_nc(self):
+        if self.proc.carry is False:
+            self.call()
+
+    def call_nz(self):
+        if self.proc.zero is False:
+            self.call()
+
+    def call_z(self):
+        if self.proc.zero is True:
+            self.call()
+
+    def jump(self):
+        self.proc.manager.jump(self.address)
+
+    def jump_c(self):
+        if self.proc.carry is True:
+            self.jump()
+
+    def jump_nc(self):
+        if self.proc.carry is False:
+            self.jump()
+
+    def jump_nz(self):
+        if self.proc.zero is False:
+            self.jump()
+
+    def jump_z(self):
+        if self.proc.zero is True:
+            self.jump()
+
+    def return_(self):
+        self.proc.manager.jump(self.proc.memory.pop_stack() + Memory.PROGRAM_WIDTH)
+
+    def return_c(self):
+        if self.proc.carry is True:
+            self.return_()
+
+    def return_nc(self):
+        if self.proc.carry is False:
+            self.return_()
+
+    def return_nz(self):
+        if self.proc.zero is False:
+            self.return_()
+
+    def return_z(self):
+        if self.proc.zero is True:
+            self.return_()
+
+    OPS = {
+        "CALL": call,
+        "CALL C": call_c,
+        "CALL NC": call_nc,
+        "CALL NZ": call_nz,
+        "CALL Z": call_z,
+        "JUMP": jump,
+        "JUMP C": jump_c,
+        "JUMP NC": jump_nc,
+        "JUMP NZ": jump_nz,
+        "JUMP Z": jump_z,
+    }
+
+    def __init__(self, op: Callable[[], None], address: hex):
+        self.operator = op
+        self.address = address
+        self.proc = None  # type: Processor
+
+    def exec(self, proc: Processor):
+        self.proc = proc
+        self.operator(self)

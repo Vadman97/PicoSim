@@ -1,4 +1,6 @@
 # PicoSim - Xilinx PicoBlaze Assembly Simulator
+Copyright (C) 2017  Vadim Korolik - see [LICENCE] (https://github.com/Vadman97/PicoSim/blob/master/LICENSE)
+
 
 [ISR] (https://www.xilinx.com/support/documentation/ip_documentation/ug129.pdf)
 
@@ -11,3 +13,4 @@ System: ProgramManager(Program Counter, state machine?),
 Debugging / execution should control instruction exec rate via ProgramManager
 
 Seems like the simulation is on the order of 1000x slower than FPGA.
+
