@@ -3,6 +3,7 @@ PicoSim - Xilinx PicoBlaze Assembly Simulator in Python
 Copyright (C) 2017  Vadim Korolik - see LICENCE
 """
 import random
+import time
 import unittest
 
 import ops.operations as op
@@ -208,21 +209,24 @@ class ProcessorTests(unittest.TestCase):
         v2 = random.randint(0, MAX)
         self.proc.memory.set_register('s1', v1)
         self.proc.memory.set_register('s2', v2)
+        # undo the SRX comparison hack
+        self.proc.add_instruction(op.BitwiseOperation(op.BitwiseOperation.OPS["SRX"], 's3'))
         for o in op.ArithmeticOperation.OPS.values():
-            for i in range(0, 511 // len(op.ArithmeticOperation.OPS)):
+            for i in range(0, 500 // len(op.ArithmeticOperation.OPS)):
                 instr = op.ArithmeticOperation(o, 's1', ['s2'])
                 self.proc.add_instruction(instr)
 
         for o in op.BitwiseOperation.OPS.values():
-            for i in range(0, 511 // len(op.BitwiseOperation.OPS)):
+            for i in range(0, 500 // len(op.BitwiseOperation.OPS)):
                 instr = op.BitwiseOperation(o, 's1')
                 self.proc.add_instruction(instr)
 
+        # repeat these ops while the 8th bit is not a 1
         self.proc.add_instruction(op.ArithmeticOperation(op.ArithmeticOperation.OPS["ADD"], 's3', [1]))
-        # COMPARE
-        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP"], 0x0))
+        # SRX comparison hack
+        self.proc.add_instruction(op.BitwiseOperation(op.BitwiseOperation.OPS["SLX"], 's3'))
+        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NC"], 0x0))
 
-        import time
         start_time = time.time()
         executed = 0
         while not self.proc.last():
@@ -232,7 +236,7 @@ class ProcessorTests(unittest.TestCase):
         dur = time.time() - start_time
         ops_per_sec = executed / dur
         eff_khz = 2.0 / 1000.0 * ops_per_sec  # on PicoBlaze, one operation takes two clocks
-        print("--- %8.3f seconds     ---" % dur)
+        print("--- %8.3f seconds, %d ops     ---" % (dur, executed))
         print("--- %8.0f ops per sec ---" % ops_per_sec)
         print("--- %8.1f KHz clock   ---" % eff_khz)
         self.assertGreater(ops_per_sec, 10000)

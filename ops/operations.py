@@ -6,13 +6,16 @@ import operator
 from functools import reduce
 from typing import List, Dict, Callable, Tuple
 
-from system.processor import Processor
 from system.memory import Memory
+from system.processor import Processor
 
 
 class Instruction(object):
     def exec(self, proc: Processor):
         pass
+
+    def __repr__(self):
+        return object.__repr__(self)
 
 
 class BitwiseOperation(Instruction):
@@ -44,7 +47,13 @@ class BitwiseOperation(Instruction):
     def shift_left_x(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
         bits.append(register_row.values[7])
-        return bits, register_row.values[7], -1
+        return bits, register_row.values[0], -1
+
+    @staticmethod
+    def shift_left_a(register_row: Memory.MemoryRow, carry: bool = False) -> Tuple[List[bool], bool, int]:
+        bits = register_row.values[1:8]
+        bits.append(bool(carry))
+        return bits, register_row.values[0], 0
 
     @staticmethod
     def shift_right_zero(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
@@ -62,13 +71,7 @@ class BitwiseOperation(Instruction):
     def shift_right_x(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
         bits = [register_row.values[0]]
         bits += register_row.values[0:7]
-        return bits, register_row.values[0], -1
-
-    @staticmethod
-    def shift_left_a(register_row: Memory.MemoryRow, carry: bool = False) -> Tuple[List[bool], bool, int]:
-        bits = register_row.values[1:8]
-        bits.append(bool(carry))
-        return bits, register_row.values[0], 0
+        return bits, register_row.values[7], -1
 
     @staticmethod
     def shift_right_a(register_row: Memory.MemoryRow, carry: bool = False) -> Tuple[List[bool], bool, int]:
@@ -110,6 +113,9 @@ class BitwiseOperation(Instruction):
 
         # increment pc
         self.proc.manager.next()
+
+    def __repr__(self):
+        return self.__class__.__name__ + " " + str(self.operator.__name__)
 
 
 def addc(a: int, b: int) -> int:
@@ -163,58 +169,46 @@ class FlowOperation(Instruction):
         self.jump()
 
     def call_c(self):
-        if self.proc.carry is True:
-            self.call()
+        self.call() if self.proc.carry is True else self.proc.manager.next()
 
     def call_nc(self):
-        if self.proc.carry is False:
-            self.call()
+        self.call() if self.proc.carry is False else self.proc.manager.next()
 
     def call_nz(self):
-        if self.proc.zero is False:
-            self.call()
+        self.call() if self.proc.zero is False else self.proc.manager.next()
 
     def call_z(self):
-        if self.proc.zero is True:
-            self.call()
+        self.call() if self.proc.zero is True else self.proc.manager.next()
 
     def jump(self):
         self.proc.manager.jump(self.address)
 
     def jump_c(self):
-        if self.proc.carry is True:
-            self.jump()
+        self.jump() if self.proc.carry is True else self.proc.manager.next()
 
     def jump_nc(self):
-        if self.proc.carry is False:
-            self.jump()
+        self.jump() if self.proc.carry is False else self.proc.manager.next()
 
     def jump_nz(self):
-        if self.proc.zero is False:
-            self.jump()
+        self.jump() if self.proc.zero is False else self.proc.manager.next()
 
     def jump_z(self):
-        if self.proc.zero is True:
-            self.jump()
+        self.jump() if self.proc.zero is True else self.proc.manager.next()
 
     def return_(self):
         self.proc.manager.jump(self.proc.memory.pop_stack() + Memory.PROGRAM_WIDTH)
 
     def return_c(self):
-        if self.proc.carry is True:
-            self.return_()
+        self.return_() if self.proc.carry is True else self.proc.manager.next()
 
     def return_nc(self):
-        if self.proc.carry is False:
-            self.return_()
+        self.return_() if self.proc.carry is False else self.proc.manager.next()
 
     def return_nz(self):
-        if self.proc.zero is False:
-            self.return_()
+        self.return_() if self.proc.zero is False else self.proc.manager.next()
 
     def return_z(self):
-        if self.proc.zero is True:
-            self.return_()
+        self.return_() if self.proc.zero is True else self.proc.manager.next()
 
     OPS = {
         "CALL": call,
