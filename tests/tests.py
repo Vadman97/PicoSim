@@ -209,8 +209,6 @@ class ProcessorTests(unittest.TestCase):
         v2 = random.randint(0, MAX)
         self.proc.memory.set_register('s1', v1)
         self.proc.memory.set_register('s2', v2)
-        # undo the SRX comparison hack
-        self.proc.add_instruction(op.BitwiseOperation(op.BitwiseOperation.OPS["SRX"], 's3'))
         for o in op.ArithmeticOperation.OPS.values():
             for i in range(0, 500 // len(op.ArithmeticOperation.OPS)):
                 instr = op.ArithmeticOperation(o, 's1', ['s2'])
@@ -221,15 +219,14 @@ class ProcessorTests(unittest.TestCase):
                 instr = op.BitwiseOperation(o, 's1')
                 self.proc.add_instruction(instr)
 
-        # repeat these ops while the 8th bit is not a 1
+        # repeat these ops while s3 is not FF
         self.proc.add_instruction(op.ArithmeticOperation(op.ArithmeticOperation.OPS["ADD"], 's3', [1]))
-        # SRX comparison hack
-        self.proc.add_instruction(op.BitwiseOperation(op.BitwiseOperation.OPS["SLX"], 's3'))
-        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NC"], 0x0))
+        self.proc.add_instruction(op.CompareOperation(op.CompareOperation.OPS["COMPARE"], 's3', 0xFF))
+        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NZ"], 0x000))
 
-        start_time = time.time()
         executed = 0
-        while not self.proc.last():
+        start_time = time.time()
+        while not self.proc.outside_program():
             self.proc.execute()
             executed += 1
 
@@ -240,6 +237,41 @@ class ProcessorTests(unittest.TestCase):
         print("--- %8.0f ops per sec ---" % ops_per_sec)
         print("--- %8.1f KHz clock   ---" % eff_khz)
         self.assertGreater(ops_per_sec, 10000)
+
+    def test_compare_jump(self):
+        self.proc.add_instruction(op.ArithmeticOperation(op.ArithmeticOperation.OPS["ADD"], 's1', [1]))
+        self.proc.add_instruction(op.CompareOperation(op.CompareOperation.OPS["COMPARE"], 's1', 0xFF))
+        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NZ"], 0x000))
+
+        executed = 0
+        while not self.proc.outside_program():
+            self.proc.execute()
+            executed += 1
+
+        self.assertEqual(executed, 3*0xFF)
+
+    def test_data_ops(self):
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["LOAD"], 's1', 0xFF))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["STORE"], 's1', 0x10))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["FETCH"], 's2', 0x10))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["OUTPUT"], 's2', 0x10))
+
+        executed = 0
+        while not self.proc.outside_program():
+            self.proc.execute()
+            executed += 1
+
+        self.assertEqual(self.proc.memory.fetch_register('s1'), 0xFF)
+        self.assertEqual(self.proc.memory.fetch_register('s2'), 0xFF)
+        self.assertEqual(self.proc.port_id, 0x10)
+        self.assertEqual(self.proc.out_port, 0xFF)
+
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["INPUT"], 's3', 0x40))
+        self.proc.set_int_port(0x88)
+        self.proc.execute()
+
+        self.assertEqual(self.proc.port_id, 0x40)
+        self.assertEqual(self.proc.memory.fetch_register('s3'), 0x88)
 
 
 if __name__ == '__main__':

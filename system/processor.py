@@ -14,6 +14,10 @@ class Processor(object):
         self._carry = False  # type: bool
         self._zero = False  # type: bool
 
+        self._port_id = 0x00  # type: hex
+        self._in_port = 0x00  # type: hex
+        self._out_port = 0x00  # type: hex
+
     @property
     def carry(self) -> bool:
         return self._carry
@@ -29,6 +33,27 @@ class Processor(object):
         self._zero = val
 
     @property
+    def port_id(self) -> hex:
+        return self._port_id
+
+    def set_port_id(self, val: hex):
+        self._port_id = val
+
+    @property
+    def in_port(self) -> hex:
+        return self._in_port
+
+    def set_int_port(self, val: hex):
+        self._in_port = val
+
+    @property
+    def out_port(self) -> hex:
+        return self._out_port
+
+    def set_out_port(self, val: hex):
+        self._out_port = val
+
+    @property
     def memory(self) -> Memory:
         return self._mem
 
@@ -41,5 +66,5 @@ class Processor(object):
     def fetch_program(self, addr: hex):
         return self._instructions[addr]
 
-    def last(self) -> bool:
+    def outside_program(self) -> bool:
         return self.manager.pc == (len(self._instructions))

@@ -70,9 +70,6 @@ class Memory(object):
     def fetch_data(self, address: int) -> int:
         return self.DATA_MEMORY[address].value
 
-    def fetch_data_reg(self, register: str) -> int:
-        return self.DATA_MEMORY[self.fetch_register(register)].value
-
     def set_register(self, reg_name: str, value: int) -> None:
         if not isinstance(value, int):
             raise Exception("Value must be a number")
@@ -82,11 +79,6 @@ class Memory(object):
         if not isinstance(value, int):
             raise Exception("Value must be a number")
         self.DATA_MEMORY[address].set_value(value)
-
-    def store_data_reg(self, register: str, value: int) -> None:
-        if not isinstance(value, int):
-            raise Exception("Value must be a number")
-        self.DATA_MEMORY[self.fetch_register(register)].set_value(value)
 
     def push_stack(self, value: int) -> None:
         if self.stack_pointer > self.STACK_LENGTH - 1:
