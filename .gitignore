@@ -89,3 +89,6 @@ ENV/
 .ropeproject
 
 .idea/
+
+# Example psm files
+*.psm
