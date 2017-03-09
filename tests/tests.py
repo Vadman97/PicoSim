@@ -82,7 +82,7 @@ class OperationTests(unittest.TestCase):
                 v2 = random.randint(0, MAX)
                 self.proc.memory.set_register('s1', v1)
                 self.proc.memory.set_register('s2', v2)
-                op.ArithmeticOperation(o, 's1', ['s2']).exec(self.proc)
+                op.ArithmeticOperation(o, ['s1', 's2']).exec(self.proc)
                 self.assertEqual(self.proc.memory.fetch_register('s1'), make_positive(o(v1, v2)))
 
     def test_arithmetic_ops_stress_const(self):
@@ -91,7 +91,7 @@ class OperationTests(unittest.TestCase):
                 v1 = random.randint(0, MAX)
                 c1 = random.randint(0, MAX)
                 self.proc.memory.set_register('s1', v1)
-                op.ArithmeticOperation(o, 's1', [c1]).exec(self.proc)
+                op.ArithmeticOperation(o, ['s1', c1]).exec(self.proc)
                 self.assertEqual(self.proc.memory.fetch_register('s1'), make_positive(o(v1, c1)))
 
     def test_arithmetic_ops_stress_sum(self):
@@ -100,7 +100,7 @@ class OperationTests(unittest.TestCase):
             self.proc.memory.set_register('s1', s)
             for i in range(0, ITERATIONS):
                 v = random.randint(1, 10)
-                op.ArithmeticOperation(o, 's1', [v]).exec(self.proc)
+                op.ArithmeticOperation(o, ['s1', v]).exec(self.proc)
                 s = make_positive(o(s, v))
                 self.assertEqual(self.proc.memory.fetch_register('s1'), s)
 
@@ -110,7 +110,7 @@ class OperationTests(unittest.TestCase):
                 v1 = random.randint(0, MAX)
                 self.proc.memory.set_register('s1', v1)
                 self.proc.set_carry(False)
-                op.BitwiseOperation(o, 's1').exec(self.proc)
+                op.BitwiseOperation(o, ['s1']).exec(self.proc)
                 r = Memory.MemoryRow(Memory.REGISTER_WIDTH)
                 r.set_value(v1)
                 r.values = o(r)[0]
@@ -171,31 +171,31 @@ class OperationTests(unittest.TestCase):
                 self.proc.set_carry(b)
                 c = (((v1 << 1) & 0xFE) | self.proc.carry) % (MAX + 1)
                 self.proc.memory.set_register('s1', v1)
-                o = op.BitwiseOperation(op.BitwiseOperation.OPS["SLA"], 's1')
+                o = op.BitwiseOperation(op.BitwiseOperation.OPS["SLA"], ['s1'])
                 o.exec(self.proc)
                 self.assertEqual(self.proc.memory.fetch_register('s1'), c)
 
                 self.proc.set_carry(b)
                 c = (((v1 >> 1) & 0x7F) | (self.proc.carry << 7)) % (MAX + 1)
                 self.proc.memory.set_register('s1', v1)
-                o = op.BitwiseOperation(op.BitwiseOperation.OPS["SRA"], 's1')
+                o = op.BitwiseOperation(op.BitwiseOperation.OPS["SRA"], ['s1'])
                 o.exec(self.proc)
                 self.assertEqual(self.proc.memory.fetch_register('s1'), c)
 
     def test_call(self):
-        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], 0x297)
+        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], [0x297])
         o.exec(self.proc)
         self.assertEqual(self.proc.manager.pc, 0x297)
 
-        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], 0x0)
+        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], [0x0])
         o.exec(self.proc)
         self.assertEqual(self.proc.manager.pc, 0x0)
 
-        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], 0x3FF)
+        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], [0x3FF])
         o.exec(self.proc)
         self.assertEqual(self.proc.manager.pc, 0x3FF)
 
-        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], 0x400)
+        o = op.FlowOperation(op.FlowOperation.OPS["CALL"], [0x400])
         o.exec(self.proc)
         self.assertEqual(self.proc.manager.pc, 0x0)
 
@@ -211,18 +211,18 @@ class ProcessorTests(unittest.TestCase):
         self.proc.memory.set_register('s2', v2)
         for o in op.ArithmeticOperation.OPS.values():
             for i in range(0, 500 // len(op.ArithmeticOperation.OPS)):
-                instr = op.ArithmeticOperation(o, 's1', ['s2'])
+                instr = op.ArithmeticOperation(o, ['s1', 's2'])
                 self.proc.add_instruction(instr)
 
         for o in op.BitwiseOperation.OPS.values():
             for i in range(0, 500 // len(op.BitwiseOperation.OPS)):
-                instr = op.BitwiseOperation(o, 's1')
+                instr = op.BitwiseOperation(o, ['s1'])
                 self.proc.add_instruction(instr)
 
         # repeat these ops while s3 is not FF
-        self.proc.add_instruction(op.ArithmeticOperation(op.ArithmeticOperation.OPS["ADD"], 's3', [1]))
-        self.proc.add_instruction(op.CompareOperation(op.CompareOperation.OPS["COMPARE"], 's3', 0xFF))
-        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NZ"], 0x000))
+        self.proc.add_instruction(op.ArithmeticOperation(op.ArithmeticOperation.OPS["ADD"], ['s3', 1]))
+        self.proc.add_instruction(op.CompareOperation(op.CompareOperation.OPS["COMPARE"], ['s3', 0xFF]))
+        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NZ"], [0x000]))
 
         executed = 0
         start_time = time.time()
@@ -239,9 +239,9 @@ class ProcessorTests(unittest.TestCase):
         self.assertGreater(ops_per_sec, 10000)
 
     def test_compare_jump(self):
-        self.proc.add_instruction(op.ArithmeticOperation(op.ArithmeticOperation.OPS["ADD"], 's1', [1]))
-        self.proc.add_instruction(op.CompareOperation(op.CompareOperation.OPS["COMPARE"], 's1', 0xFF))
-        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NZ"], 0x000))
+        self.proc.add_instruction(op.ArithmeticOperation(op.ArithmeticOperation.OPS["ADD"], ['s1', 1]))
+        self.proc.add_instruction(op.CompareOperation(op.CompareOperation.OPS["COMPARE"], ['s1', 0xFF]))
+        self.proc.add_instruction(op.FlowOperation(op.FlowOperation.OPS["JUMP NZ"], [0x000]))
 
         executed = 0
         while not self.proc.outside_program():
@@ -251,10 +251,10 @@ class ProcessorTests(unittest.TestCase):
         self.assertEqual(executed, 3*0xFF)
 
     def test_data_ops(self):
-        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["LOAD"], 's1', 0xFF))
-        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["STORE"], 's1', 0x10))
-        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["FETCH"], 's2', 0x10))
-        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["OUTPUT"], 's2', 0x10))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["LOAD"], ['s1', 0xFF]))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["STORE"], ['s1', 0x10]))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["FETCH"], ['s2', 0x10]))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["OUTPUT"], ['s2', 0x10]))
 
         executed = 0
         while not self.proc.outside_program():
@@ -266,7 +266,7 @@ class ProcessorTests(unittest.TestCase):
         self.assertEqual(self.proc.port_id, 0x10)
         self.assertEqual(self.proc.out_port, 0xFF)
 
-        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["INPUT"], 's3', 0x40))
+        self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["INPUT"], ['s3', 0x40]))
         self.proc.set_int_port(0x88)
         self.proc.execute()
 

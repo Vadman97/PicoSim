@@ -94,9 +94,9 @@ class BitwiseOperation(Instruction):
         "SRA": shift_right_a.__func__,
     }  # type: Dict[str, Callable[[int, int], Tuple[List[bool], bool, int]]]
 
-    def __init__(self, op: Callable[[int, int], Tuple[List[bool], bool, int]], reg: str):
+    def __init__(self, op: Callable[[int, int], Tuple[List[bool], bool, int]], args: List[Union[str, int]]):
         self.operator = op
-        self.register = reg
+        self.register = args[0]
         self.proc = None  # type: Processor
         self.reg_row = None  # type: Memory.MemoryRow
 
@@ -129,6 +129,7 @@ def subc(a: int, b: int) -> int:
 
 
 class ArithmeticOperation(Instruction):
+
     OPS = {
         "ADD": operator.add,
         "ADDC": addc,
@@ -145,10 +146,10 @@ class ArithmeticOperation(Instruction):
         else:
             return arg
 
-    def __init__(self, op: Callable[[int, int], int], reg: str, args: List):
+    def __init__(self, op: Callable[[int, int], int], args: List[Union[str, int]]):
         self.operator = op
-        self.register = reg
-        self.o_args = [reg] + args
+        self.register = args[0]
+        self.o_args = args
         self.args = []  # type: List[int]
         self.proc = None  # type: Processor
 
@@ -199,10 +200,10 @@ class CompareOperation(Instruction):
         else:
             return arg
 
-    def __init__(self, op: Callable[[List[Union[str, int]]], None], reg: str, second: Union[str, int]):
+    def __init__(self, op: Callable[[List[Union[str, int]]], None], args: List[Union[str, int]]):
         self.operator = op
-        self.register = reg
-        self.o_args = [reg, second]
+        self.register = args[0]
+        self.o_args = args
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):
@@ -240,10 +241,10 @@ class DataOperation(Instruction):
         "LOAD": load,
     }  # type: Dict[str, Callable[[List[Union[str, int]]], None]]
 
-    def __init__(self, op: Callable[[List[Union[str, int]]], None], reg: str, second: Union[str, int]):
+    def __init__(self, op: Callable[[List[Union[str, int]]], None], args: List[Union[str, int]]):
         self.operator = op
-        self.register = reg
-        self.second = second
+        self.register = args[0]
+        self.second = args[1]
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):
@@ -320,11 +321,16 @@ class FlowOperation(Instruction):
         "JUMP Z": jump_z,
     }  # type: Dict[str, Callable[[], None]]
 
-    def __init__(self, op: Callable[[], None], address: hex):
+    def __init__(self, op: Callable[[], None], args: List[Union[hex, int]]):
         self.operator = op
-        self.address = address
+        self.address = int(args[0])
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):
         self.proc = proc
         self.operator(self)
+
+
+OP_CLASSES = [
+    BitwiseOperation, ArithmeticOperation, CompareOperation, DataOperation, FlowOperation
+]

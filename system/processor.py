@@ -2,15 +2,16 @@
 PicoSim - Xilinx PicoBlaze Assembly Simulator in Python
 Copyright (C) 2017  Vadim Korolik - see LICENCE
 """
-from system.memory import Memory
 from system.manager import ProgramManager
+from system.memory import Memory
 
 
 class Processor(object):
     def __init__(self):
         self._mem = Memory()
         self.manager = ProgramManager()
-        self._instructions = []
+        self._last_instruction = 0
+        self._instructions = {}
         self._carry = False  # type: bool
         self._zero = False  # type: bool
 
@@ -61,7 +62,8 @@ class Processor(object):
         self.fetch_program(self.manager.pc).exec(self)
 
     def add_instruction(self, instr):
-        self._instructions.append(instr)
+        self._instructions[self._last_instruction] = instr
+        self._last_instruction += 1
 
     def fetch_program(self, addr: hex):
         return self._instructions[addr]
