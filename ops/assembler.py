@@ -9,11 +9,23 @@ import ops.operations as op
 
 class Line(object):
     def __init__(self, address: hex, instruction: str, tag: str):
-        print("%d (%s): %s" % (address, tag, instruction))
+        print("%d (tag %s): %s" % (address, tag, instruction))
         self.address = address
         self.tag = tag.lower()
-        self.instruction = instruction.lower().split(" ")
-        self.instr_name = self.instruction[0].upper()
+        self.instruction = []
+        # TODO: Does not work
+        if ',' in instruction:
+            self.instr_name = instruction.split(',')[0].upper()
+        else:
+            self.instr_name = instruction.split(' ')[0].upper()
+        print(self.instr_name)
+        self.instruction.append(self.instr_name)
+        instruction = "".join(instruction.split(',')[1:])
+        for x in instruction.lower().split(" "):
+            x = x.strip()
+            if x:
+                self.instruction.append(x)
+        # TODO: How to deal with JUMP Z, s8 vs JUMP s8
         self.op = None  # type: op.Instruction
 
     def parse(self, constants: Dict[str, hex]):
@@ -27,11 +39,13 @@ class Line(object):
                     for idx, each in enumerate(args):
                         if each in constants.keys():
                             args[idx] = constants[each]
+                    print(args)
                     self.op = op_class(op_type, args)
 
 
 class Assembler(object):
     def set_constant(self, l: Line):
+        print(l.instruction)
         self.constants[l.instruction[1]] = int(l.instruction[2], 16)
 
     def __init__(self, path: str):
@@ -55,7 +69,6 @@ class Assembler(object):
                 line = line.strip()
                 if not len(line):
                     continue
-
                 l = Line(self.start_address + counter, line, tag)
                 if l.instr_name == "CONSTANT":
                     self.set_constant(l)
