@@ -25,7 +25,10 @@ class Line(object):
             x = x.strip()
             if x:
                 self.instruction.append(x)
-        # TODO: How to deal with JUMP Z, s8 vs JUMP s8
+        # TODO: How to deal with
+        # JUMP Z,      1FF
+        # JUMP    200
+        # JUMP@    (s2, s3)
         self.op = None  # type: op.Instruction
 
     def parse(self, constants: Dict[str, hex]):
