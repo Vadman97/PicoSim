@@ -274,5 +274,31 @@ class ProcessorTests(unittest.TestCase):
         self.assertEqual(self.proc.memory.fetch_register('s3'), 0x88)
 
 
+class AssemblerTest(unittest.TestCase):
+    def setUp(self):
+        from ops.assembler import Assembler
+        self.a = Assembler("test.psm")
+        self.proc = Processor()
+
+    def test_runs(self):
+        self.a.parse()
+        self.proc.set_instructions(self.a.convert())
+
+        executed = 0
+        start_time = time.time()
+        while not self.proc.outside_program():
+            self.proc.execute()
+            executed += 1
+
+        dur = time.time() - start_time
+        ops_per_sec = executed / dur
+        eff_khz = 2.0 / 1000.0 * ops_per_sec  # on PicoBlaze, one operation takes two clocks
+        print("--- %8.3f seconds, %d ops     ---" % (dur, executed))
+        print("--- %8.0f ops per sec ---" % ops_per_sec)
+        print("--- %8.1f KHz clock   ---" % eff_khz)
+
+        self.assertTrue(True)
+
+
 if __name__ == '__main__':
     unittest.main()

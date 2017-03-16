@@ -11,7 +11,7 @@ class Processor(object):
         self._mem = Memory()
         self.manager = ProgramManager()
         self._last_instruction = 0
-        self._instructions = {}
+        self._instructions = {}  # type Dict[hex, Instruction]
         self._carry = False  # type: bool
         self._zero = False  # type: bool
 
@@ -60,6 +60,9 @@ class Processor(object):
 
     def execute(self) -> None:
         self.fetch_program(self.manager.pc).exec(self)
+
+    def set_instructions(self, instructions):
+        self._instructions = instructions
 
     def add_instruction(self, instr):
         self._instructions[self._last_instruction] = instr

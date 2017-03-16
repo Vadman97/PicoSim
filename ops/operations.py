@@ -20,6 +20,13 @@ class Instruction(object):
         return object.__repr__(self)
 
 
+class AssemblerDirective(Instruction):
+    OPS = {
+        "ADDRESS": None,
+        "CONSTANT": None
+    }  # type: Dict[str, None]
+
+
 class BitwiseOperation(Instruction):
     @staticmethod
     def rotate_left(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
@@ -230,6 +237,10 @@ class DataOperation(Instruction):
         self.proc.set_port_id(args[1])
         self.proc.set_out_port(self.proc.memory.fetch_register(args[0]))
 
+    # TODO outputk
+    def outputk(self, args):
+        pass
+
     def load(self, args):
         self.proc.memory.set_register(args[0], args[1])
 
@@ -238,6 +249,7 @@ class DataOperation(Instruction):
         "STORE": store,
         "INPUT": input_,
         "OUTPUT": output,
+        "OUTPUTK": outputk,
         "LOAD": load,
     }  # type: Dict[str, Callable[[List[Union[str, int]]], None]]
 
@@ -293,6 +305,10 @@ class FlowOperation(Instruction):
     def jump_z(self):
         self.jump() if self.proc.zero is True else self.proc.manager.next()
 
+    # TODO JUMP@
+    def jump_at(self):
+        pass
+
     def return_(self):
         self.proc.manager.jump(self.proc.memory.pop_stack() + Memory.PROGRAM_WIDTH)
 
@@ -319,6 +335,7 @@ class FlowOperation(Instruction):
         "JUMP NC": jump_nc,
         "JUMP NZ": jump_nz,
         "JUMP Z": jump_z,
+        "JUMP@": jump_at
     }  # type: Dict[str, Callable[[], None]]
 
     def __init__(self, op: Callable[[], None], args: List[Union[hex, int]]):
@@ -332,5 +349,11 @@ class FlowOperation(Instruction):
 
 
 OP_CLASSES = [
-    BitwiseOperation, ArithmeticOperation, CompareOperation, DataOperation, FlowOperation
+    AssemblerDirective, BitwiseOperation, ArithmeticOperation, CompareOperation, DataOperation, FlowOperation
 ]
+
+ALL_OPS = {}
+
+for x in OP_CLASSES:
+    for op_name, op_func in x.OPS.items():
+        ALL_OPS[op_name] = (x, op_func)
