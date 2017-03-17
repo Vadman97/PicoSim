@@ -19,6 +19,13 @@ class ParseError(Exception):
 
 
 class Line(object):
+    NUMERIC_POSTFIXES = {
+        "'b": 2,
+        "'o": 8,
+        "'d": 10,
+        "'h": 16
+    }
+
     def __init__(self, address: hex, instruction: str, tag: str):
         self.debug_string = "%d (tag %s): %s" % (address, tag, instruction)
         self.address = address
@@ -28,6 +35,7 @@ class Line(object):
         self.instruction_operator = None  # type: Callable
         self.instruction_rest = []  # type: str
         self.instruction = None  # type: op.Instruction
+        print(self.debug_string)
 
         # to prevent JUMP    Z from being mesed up by spaces
         instruction = " ".join([x.strip() for x in instruction.split()])
@@ -45,16 +53,26 @@ class Line(object):
                         # strip whitespace and make sure we add stuff that's not blank
                         for x in instruction[len(self.instruction_name):].strip().lower().split(','):
                             x = x.strip()
+                            # make sure its not blank, if its a numeric value convert to int
                             if len(x):
-                                self.instruction_rest.append(x)
+                                try:
+                                    val = None
+                                    found = False
+                                    for postfix, base in Line.NUMERIC_POSTFIXES.items():
+                                        if postfix in x:
+                                            found = True
+                                            # trim the 'b postfix
+                                            val = int(x[:-2], base)
+                                    if not found:
+                                        # default hex
+                                        val = int(x, 16)
+                                except ValueError:
+                                    val = x
+                                self.instruction_rest.append(val)
                         # update the length of this instruction we found
                         longest = len(instr_name)
         if self.instruction_name is None:
             raise ParseError(self.debug_string)
-        else:
-            print(self.debug_string)
-            print(self.instruction_name)
-            print(self.instruction_rest)
 
     def __repr__(self):
         return self.debug_string if self.debug_string is not None else "Error: Unknown Line"
@@ -67,13 +85,12 @@ class Line(object):
                 for x in [constants, tag_addresses]:
                     if each in x.keys():
                         self.instruction_rest[idx] = x[each]
-            print("Rest: " + str(self.instruction_rest))
             self.instruction = self.instruction_class(self.instruction_operator, self.instruction_rest)
 
 
 class Assembler(object):
     def set_constant(self, l: Line):
-        self.constants[l.instruction_rest[0]] = int(l.instruction_rest[1], 16)
+        self.constants[l.instruction_rest[0]] = l.instruction_rest[1]
 
     def __init__(self, path: str):
         self.path = path
