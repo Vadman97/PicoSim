@@ -324,6 +324,7 @@ class FlowOperation(Instruction):
     def return_z(self):
         self.return_() if self.proc.zero is True else self.proc.manager.next()
 
+    # TODO interrupt instructions
     OPS = {
         "CALL": call,
         "CALL C": call_c,

@@ -6,6 +6,7 @@ from system.manager import ProgramManager
 from system.memory import Memory
 
 
+# TODO interrupts
 class Processor(object):
     def __init__(self):
         self._mem = Memory()
