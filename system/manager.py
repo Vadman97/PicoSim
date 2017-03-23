@@ -6,8 +6,9 @@ from system.memory import Memory
 
 
 class ProgramManager(object):
-    def __init__(self):
+    def __init__(self, isr_addr: hex = 0x3FF):
         self._pc = 0x0  # type: hex
+        self.isr_addr = isr_addr
 
     @property
     def pc(self) -> hex:

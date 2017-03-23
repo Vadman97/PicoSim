@@ -7,6 +7,7 @@ import time
 import unittest
 
 import ops.operations as op
+from ops.assembler import Assembler
 from system.memory import Memory
 from system.processor import Processor
 
@@ -169,14 +170,14 @@ class OperationTests(unittest.TestCase):
 
             for b in [True, False]:
                 self.proc.set_carry(b)
-                c = (((v1 << 1) & 0xFE) | self.proc.carry) % (MAX + 1)
+                c = (((v1 << 1) & 0xFE) | self.proc.external.carry) % (MAX + 1)
                 self.proc.memory.set_register('s1', v1)
                 o = op.BitwiseOperation(op.BitwiseOperation.OPS["SLA"], ['s1'])
                 o.exec(self.proc)
                 self.assertEqual(self.proc.memory.fetch_register('s1'), c)
 
                 self.proc.set_carry(b)
-                c = (((v1 >> 1) & 0x7F) | (self.proc.carry << 7)) % (MAX + 1)
+                c = (((v1 >> 1) & 0x7F) | (self.proc.external.carry << 7)) % (MAX + 1)
                 self.proc.memory.set_register('s1', v1)
                 o = op.BitwiseOperation(op.BitwiseOperation.OPS["SRA"], ['s1'])
                 o.exec(self.proc)
@@ -263,41 +264,48 @@ class ProcessorTests(unittest.TestCase):
 
         self.assertEqual(self.proc.memory.fetch_register('s1'), 0xFF)
         self.assertEqual(self.proc.memory.fetch_register('s2'), 0xFF)
-        self.assertEqual(self.proc.port_id, 0x10)
-        self.assertEqual(self.proc.out_port, 0xFF)
+        self.assertEqual(self.proc.external.port_id, 0x10)
+        self.assertEqual(self.proc.external.out_port, 0xFF)
 
         self.proc.add_instruction(op.DataOperation(op.DataOperation.OPS["INPUT"], ['s3', 0x40]))
-        self.proc.set_int_port(0x88)
+        self.proc.external.set_int_port(0x88)
         self.proc.execute()
 
-        self.assertEqual(self.proc.port_id, 0x40)
+        self.assertEqual(self.proc.external.port_id, 0x40)
         self.assertEqual(self.proc.memory.fetch_register('s3'), 0x88)
 
 
 class AssemblerTest(unittest.TestCase):
-    def setUp(self):
-        from ops.assembler import Assembler
-        self.a = Assembler("test.psm")
-        self.proc = Processor()
+    TIMEOUT = 5.0
 
     def test_runs(self):
-        self.a.parse()
-        self.proc.set_instructions(self.a.convert())
+        for file in ["test.psm", "test_int.psm"]:
+            print("TESTING PSM FILE %s" % file)
+            self.a = Assembler(file)
+            self.a.parse()
+            # print the debug representation of each line in the test file
+            for line in self.a.instructions:
+                print(repr(line))
 
-        executed = 0
-        start_time = time.time()
-        while not self.proc.outside_program():
-            self.proc.execute()
-            executed += 1
+            self.proc = Processor()
+            self.proc.set_instructions(self.a.convert())
 
-        dur = time.time() - start_time
-        ops_per_sec = executed / dur
-        eff_khz = 2.0 / 1000.0 * ops_per_sec  # on PicoBlaze, one operation takes two clocks
-        print("--- %8.3f seconds, %d ops     ---" % (dur, executed))
-        print("--- %8.0f ops per sec ---" % ops_per_sec)
-        print("--- %8.1f KHz clock   ---" % eff_khz)
+            executed = 0
+            start_time = time.time()
+            while not self.proc.outside_program():
+                self.proc.execute()
+                executed += 1
+                if (time.time() - start_time) > AssemblerTest.TIMEOUT:
+                    raise TimeoutError("Simulation never finished within timeout %.1f" % (time.time() - start_time))
 
-        self.assertTrue(True)
+            dur = time.time() - start_time
+            ops_per_sec = executed / dur
+            eff_khz = 2.0 / 1000.0 * ops_per_sec  # on PicoBlaze, one operation takes two clocks
+            print("--- %8.3f seconds, %d ops     ---" % (dur, executed))
+            print("--- %8.0f ops per sec ---" % ops_per_sec)
+            print("--- %8.1f KHz clock   ---" % eff_khz)
+
+            self.assertTrue(True)
 
 
 if __name__ == '__main__':

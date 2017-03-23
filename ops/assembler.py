@@ -35,10 +35,11 @@ class Line(object):
         self.instruction_operator = None  # type: Callable
         self.instruction_rest = []  # type: str
         self.instruction = None  # type: op.Instruction
-        print(self.debug_string)
 
         # to prevent JUMP    Z from being mesed up by spaces
         instruction = " ".join([x.strip() for x in instruction.split()])
+        # remove parens from instruction
+        instruction = instruction.translate(dict.fromkeys(map(ord, '()'), None))
 
         longest = 0
         for instr_name, instr_tuple in op.ALL_OPS.items():

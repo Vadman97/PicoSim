@@ -2,7 +2,9 @@
 PicoSim - Xilinx PicoBlaze Assembly Simulator in Python
 Copyright (C) 2017  Vadim Korolik - see LICENCE
 """
+import inspect
 import operator
+import sys
 from functools import reduce
 from typing import List, Dict, Callable, Tuple, Union
 
@@ -111,7 +113,7 @@ class BitwiseOperation(Instruction):
         self.proc = proc
         self.reg_row = self.proc.memory.REGISTERS[self.register.lower()]  # retrieve register memory row
         if self.operator is BitwiseOperation.shift_left_a or self.operator is BitwiseOperation.shift_right_a:
-            bits, carry, zero = self.operator(self.reg_row, self.proc.carry)
+            bits, carry, zero = self.operator(self.reg_row, self.proc.external.carry)
         else:
             bits, carry, zero = self.operator(self.reg_row)
         # directly set result to memory
@@ -140,10 +142,12 @@ class ArithmeticOperation(Instruction):
     OPS = {
         "ADD": operator.add,
         "ADDC": addc,
+        "ADDCY": addc,
         "AND": operator.and_,
         "OR": operator.or_,
         "SUB": operator.sub,
         "SUBC": subc,
+        "SUBCY": subc,
         "XOR": operator.xor
     }  # type: Dict[str, Callable[[int, int], int]]
 
@@ -165,7 +169,7 @@ class ArithmeticOperation(Instruction):
         self.args = map(self.expand, self.o_args)  # load register values
         val = reduce(self.operator, self.args)  # apply operator
         if operator is addc or operator is subc:
-            val += int(self.proc.carry)
+            val += int(self.proc.external.carry)
         proc.memory.set_register(self.register, val)  # set result
         if operator is operator.and_ or operator is operator.or_ or operator is operator.xor:
             self.proc.set_carry(False)
@@ -197,6 +201,7 @@ class CompareOperation(Instruction):
         self.proc.set_carry(CompareOperation.odd_parity(x))
 
     OPS = {
+        "COMP": comp,
         "COMPARE": comp,
         "TEST": test,
     }  # type: Dict[str, Callable[[List[Union[str, int]]], None]]
@@ -247,7 +252,9 @@ class DataOperation(Instruction):
     OPS = {
         "FETCH": fetch,
         "STORE": store,
+        "IN": input_,
         "INPUT": input_,
+        "OUT": output,
         "OUTPUT": output,
         "OUTPUTK": outputk,
         "LOAD": load,
@@ -279,31 +286,31 @@ class FlowOperation(Instruction):
         self.jump()
 
     def call_c(self):
-        self.call() if self.proc.carry is True else self.proc.manager.next()
+        self.call() if self.proc.external.carry is True else self.proc.manager.next()
 
     def call_nc(self):
-        self.call() if self.proc.carry is False else self.proc.manager.next()
+        self.call() if self.proc.external.carry is False else self.proc.manager.next()
 
     def call_nz(self):
-        self.call() if self.proc.zero is False else self.proc.manager.next()
+        self.call() if self.proc.external.zero is False else self.proc.manager.next()
 
     def call_z(self):
-        self.call() if self.proc.zero is True else self.proc.manager.next()
+        self.call() if self.proc.external.zero is True else self.proc.manager.next()
 
     def jump(self):
         self.proc.manager.jump(self.address)
 
     def jump_c(self):
-        self.jump() if self.proc.carry is True else self.proc.manager.next()
+        self.jump() if self.proc.external.carry is True else self.proc.manager.next()
 
     def jump_nc(self):
-        self.jump() if self.proc.carry is False else self.proc.manager.next()
+        self.jump() if self.proc.external.carry is False else self.proc.manager.next()
 
     def jump_nz(self):
-        self.jump() if self.proc.zero is False else self.proc.manager.next()
+        self.jump() if self.proc.external.zero is False else self.proc.manager.next()
 
     def jump_z(self):
-        self.jump() if self.proc.zero is True else self.proc.manager.next()
+        self.jump() if self.proc.external.zero is True else self.proc.manager.next()
 
     # TODO JUMP@
     def jump_at(self):
@@ -313,35 +320,74 @@ class FlowOperation(Instruction):
         self.proc.manager.jump(self.proc.memory.pop_stack() + Memory.PROGRAM_WIDTH)
 
     def return_c(self):
-        self.return_() if self.proc.carry is True else self.proc.manager.next()
+        self.return_() if self.proc.external.carry is True else self.proc.manager.next()
 
     def return_nc(self):
-        self.return_() if self.proc.carry is False else self.proc.manager.next()
+        self.return_() if self.proc.external.carry is False else self.proc.manager.next()
 
     def return_nz(self):
-        self.return_() if self.proc.zero is False else self.proc.manager.next()
+        self.return_() if self.proc.external.zero is False else self.proc.manager.next()
 
     def return_z(self):
-        self.return_() if self.proc.zero is True else self.proc.manager.next()
+        self.return_() if self.proc.external.zero is True else self.proc.manager.next()
 
-    # TODO interrupt instructions
+    def en_interrupt(self):
+        self.proc.set_interrupt_enabled(True)
+        self.proc.manager.next()
+
+    def dis_interrupt(self):
+        self.proc.set_interrupt_enabled(False)
+        self.proc.manager.next()
+
+    def return_i(self):
+        self.proc.manager.jump(self.proc.memory.pop_stack())
+        self.proc.recover_zero()
+        self.proc.recover_carry()
+
+    def return_i_disable(self):
+        self.return_i()
+        self.proc.set_interrupt_enabled(False)
+
+    def return_i_enable(self):
+        self.return_i()
+        self.proc.set_interrupt_enabled(True)
+
     OPS = {
         "CALL": call,
         "CALL C": call_c,
         "CALL NC": call_nc,
         "CALL NZ": call_nz,
         "CALL Z": call_z,
+        "RET": return_,
+        "RET C": return_c,
+        "RET NC": return_nc,
+        "RET NZ": return_nz,
+        "RET Z": return_z,
+        "RETURN": return_,
+        "RETURN C": return_c,
+        "RETURN NC": return_nc,
+        "RETURN NZ": return_nz,
+        "RETURN Z": return_z,
         "JUMP": jump,
         "JUMP C": jump_c,
         "JUMP NC": jump_nc,
         "JUMP NZ": jump_nz,
         "JUMP Z": jump_z,
-        "JUMP@": jump_at
+        "JUMP@": jump_at,
+        "EINT": en_interrupt,
+        "ENABLE INTERRUPT": en_interrupt,
+        "DINT": dis_interrupt,
+        "DISABLE INTERRUPT": dis_interrupt,
+        "RETI DISABLE": return_i_disable,
+        "RETURNI DISABLE": return_i_disable,
+        "RETI ENABLE": return_i_enable,
+        "RETURNI ENABLE": return_i_enable,
+
     }  # type: Dict[str, Callable[[], None]]
 
     def __init__(self, op: Callable[[], None], args: List[Union[hex, int]]):
         self.operator = op
-        self.address = int(args[0])
+        self.address = int(args[0]) if len(args) else None
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):
@@ -349,9 +395,9 @@ class FlowOperation(Instruction):
         self.operator(self)
 
 
-OP_CLASSES = [
-    AssemblerDirective, BitwiseOperation, ArithmeticOperation, CompareOperation, DataOperation, FlowOperation
-]
+OP_CLASSES = [obj for name, obj in inspect.getmembers(sys.modules[__name__],
+                                                      lambda member: inspect.isclass(member)
+                                                      and member.__module__ == __name__)]
 
 ALL_OPS = {}
 
