@@ -31,61 +31,61 @@ class AssemblerDirective(Instruction):
 
 class BitwiseOperation(Instruction):
     @staticmethod
-    def rotate_left(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def rotate_left(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
         bits.append(register_row.values[0])
         return bits, register_row.values[0], -1
 
     @staticmethod
-    def rotate_right(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def rotate_right(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = [register_row.values[7]]
         bits += register_row.values[0:7]
         return bits, register_row.values[7], -1
 
     @staticmethod
-    def shift_left_zero(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def shift_left_zero(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
         bits.append(False)
         return bits, register_row.values[0], -1
 
     @staticmethod
-    def shift_left_one(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def shift_left_one(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
         bits.append(True)
         return bits, register_row.values[0], 0
 
     @staticmethod
-    def shift_left_x(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def shift_left_x(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
         bits.append(register_row.values[7])
         return bits, register_row.values[0], -1
 
     @staticmethod
-    def shift_left_a(register_row: Memory.MemoryRow, carry: bool = False) -> Tuple[List[bool], bool, int]:
+    def shift_left_a(register_row: Memory.MEMORY_IMPL, carry: bool = False) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
         bits.append(bool(carry))
         return bits, register_row.values[0], 0
 
     @staticmethod
-    def shift_right_zero(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def shift_right_zero(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = [False]
         bits += register_row.values[0:7]
         return bits, register_row.values[7], -1
 
     @staticmethod
-    def shift_right_one(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def shift_right_one(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = [True]
         bits += register_row.values[0:7]
         return bits, register_row.values[7], 0
 
     @staticmethod
-    def shift_right_x(register_row: Memory.MemoryRow) -> Tuple[List[bool], bool, int]:
+    def shift_right_x(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = [register_row.values[0]]
         bits += register_row.values[0:7]
         return bits, register_row.values[7], -1
 
     @staticmethod
-    def shift_right_a(register_row: Memory.MemoryRow, carry: bool = False) -> Tuple[List[bool], bool, int]:
+    def shift_right_a(register_row: Memory.MEMORY_IMPL, carry: bool = False) -> Tuple[List[bool], bool, int]:
         bits = [bool(carry)]
         bits += register_row.values[0:7]
         return bits, register_row.values[7], 0
@@ -107,7 +107,7 @@ class BitwiseOperation(Instruction):
         self.operator = op
         self.register = args[0]
         self.proc = None  # type: Processor
-        self.reg_row = None  # type: Memory.MemoryRow
+        self.reg_row = None  # type: Memory.MEMORY_IMPL
 
     def exec(self, proc: Processor):
         self.proc = proc

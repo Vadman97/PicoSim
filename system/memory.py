@@ -7,15 +7,34 @@ import math
 import random
 from typing import Dict, List
 
+import numpy as np
+
 
 class Memory(object):
-    class MemoryRow(object):
-        def __init__(self, width: int, default: bool = None) -> None:
+    class Row(object):
+        def __init__(self, width: int, default: bool = False) -> None:
             self.width = width
-            self.values = [default if default is not None
-                           else bool(random.randint(0, 1)) for _ in range(0, self.width)]
             self.max_value = math.pow(2, self.width) - 1
             self.min_value = -math.pow(2, self.width - 1)
+            self.default = default
+
+    class NumpyRow(Row):
+        def __init__(self, width: int, default: bool = False) -> None:
+            super(Memory.NumpyRow, self).__init__(width, default)
+            self.values = np.array(np.zeros(self.width, np.bool_))
+
+        @property
+        def value(self) -> int:
+            np.sum(self.values)
+
+        def set_value(self, value: int) -> None:
+            pass
+
+    class MemoryRow(Row):
+        def __init__(self, width: int, default: bool = False) -> None:
+            super(Memory.MemoryRow, self).__init__(width, default)
+            self.values = [self.default if self.default is not None
+                           else bool(random.randint(0, 1)) for _ in range(0, self.width)]
 
         @property
         def value(self) -> int:
@@ -49,6 +68,8 @@ class Memory(object):
     STACK_WIDTH = 10  # type: int
     STACK_LENGTH = 31  # type: int
 
+    MEMORY_IMPL = NumpyRow
+
     def __init__(self):
         self.REGISTERS = Memory.init_reg(Memory.REGISTER_WIDTH, Memory.NUM_REGISTERS)
         self.DATA_MEMORY = Memory.init_mem(Memory.DATA_WIDTH, Memory.DATA_LENGTH)
@@ -57,12 +78,12 @@ class Memory(object):
         self.stack_pointer = 0  # type: int
 
     @staticmethod
-    def init_reg(width: int, num_reg: int) -> Dict[str, MemoryRow]:
-        return {'s%0.1x' % x: Memory.MemoryRow(width, default=False) for x in range(0, num_reg)}
+    def init_reg(width: int, num_reg: int) -> Dict[str, MEMORY_IMPL]:
+        return {'s%0.1x' % x: Memory.MEMORY_IMPL(width, default=False) for x in range(0, num_reg)}
 
     @staticmethod
-    def init_mem(width: int, length: int) -> List[MemoryRow]:
-        return [Memory.MemoryRow(width) for _ in range(0, length)]
+    def init_mem(width: int, length: int) -> List[MEMORY_IMPL]:
+        return [Memory.MEMORY_IMPL(width) for _ in range(0, length)]
 
     def fetch_register(self, reg_name: str) -> int:
         return self.REGISTERS[reg_name.lower()].value

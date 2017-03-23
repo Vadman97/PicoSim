@@ -74,7 +74,7 @@ class MemoryTests(unittest.TestCase):
 class OperationTests(unittest.TestCase):
     def setUp(self):
         self.proc = Processor()
-        self.r = Memory.MemoryRow(Memory.REGISTER_WIDTH)
+        self.r = Memory.MEMORY_IMPL(Memory.REGISTER_WIDTH)
 
     def test_arithmetic_ops_stress(self):
         for o in op.ArithmeticOperation.OPS.values():
@@ -112,7 +112,7 @@ class OperationTests(unittest.TestCase):
                 self.proc.memory.set_register('s1', v1)
                 self.proc.set_carry(False)
                 op.BitwiseOperation(o, ['s1']).exec(self.proc)
-                r = Memory.MemoryRow(Memory.REGISTER_WIDTH)
+                r = Memory.MEMORY_IMPL(Memory.REGISTER_WIDTH)
                 r.set_value(v1)
                 r.values = o(r)[0]
                 self.assertEqual(self.proc.memory.fetch_register('s1'), r.value)
