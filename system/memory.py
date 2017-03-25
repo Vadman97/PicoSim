@@ -11,28 +11,53 @@ import numpy as np
 
 
 class Memory(object):
-    class Row(object):
+    class MemoryRow(object):
         def __init__(self, width: int, default: bool = False) -> None:
             self.width = width
             self.max_value = math.pow(2, self.width) - 1
             self.min_value = -math.pow(2, self.width - 1)
             self.default = default
 
-    class NumpyRow(Row):
+        """If its too big and negative and too small, wrap"""
+        def bounds(self, value: int) -> int:
+            if value > self.max_value:
+                value = int(value % (self.max_value + 1))
+            if value < self.min_value:
+                value = int(value % (self.min_value - 1))
+            return value
+
+        """Convert int to binary accounting for 2s comp for negatives"""
+        def binary(self, value: int) -> str:
+            # if negative, compute two's comp
+            if value < 0:
+                # skip over the -0b prefix with 3:
+                binary = bin(abs(value) - (1 << self.width))[3:]
+            else:
+                # skip over the 0b prefix with 2:
+                binary = bin(value)[2:]
+            return binary
+
+    class NumpyRow(MemoryRow):
         def __init__(self, width: int, default: bool = False) -> None:
             super(Memory.NumpyRow, self).__init__(width, default)
-            self.values = np.array(np.zeros(self.width, np.bool_))
+            self.values = np.array(np.zeros(self.width, np.uint8))
+            self.binary_multiplier = np.array([1 << (self.width - 1 - idx) for idx, _ in enumerate(range(self.width))])
 
         @property
         def value(self) -> int:
-            np.sum(self.values)
+            return int(np.sum(self.values * self.binary_multiplier))
 
         def set_value(self, value: int) -> None:
-            pass
+            value = self.bounds(value)
+            # automatically performs 2s comp if needed
+            binary = np.binary_repr(value, width=8)
+            print(binary)
+            self.values = np.array(list(binary), dtype=np.uint8)
+            print(self.values)
 
-    class MemoryRow(Row):
+    class ArrayRow(MemoryRow):
         def __init__(self, width: int, default: bool = False) -> None:
-            super(Memory.MemoryRow, self).__init__(width, default)
+            super(Memory.ArrayRow, self).__init__(width, default)
             self.values = [self.default if self.default is not None
                            else bool(random.randint(0, 1)) for _ in range(0, self.width)]
 
@@ -44,17 +69,8 @@ class Memory(object):
 
         def set_value(self, value: int) -> None:
             """set the memory row value to a decimal value, converted to two's comp if negative"""
-            if value > self.max_value:
-                value = int(value % (self.max_value + 1))
-            if value < self.min_value:
-                value = int(value % (self.min_value - 1))
-            # if negative, compute two's comp
-            if value < 0:
-                # skip over the -0b prefix with 3:
-                binary = bin(abs(value) - (1 << self.width))[3:]
-            else:
-                # skip over the 0b prefix with 2:
-                binary = bin(value)[2:]
+            value = self.bounds(value)
+            binary = self.binary(value)
             # 0 extend with itertools chain
             self.values = [bool(int(x)) for x in itertools.chain(
                 [False for _ in range(0, len(self.values) - len(binary))], binary)]

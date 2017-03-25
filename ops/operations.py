@@ -11,6 +11,7 @@ from typing import List, Dict, Callable, Tuple, Union
 from system.memory import Memory
 from system.processor import Processor
 
+import numpy as np
 
 class Instruction(object):
     OPS = {}
@@ -33,48 +34,55 @@ class BitwiseOperation(Instruction):
     @staticmethod
     def rotate_left(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
-        bits.append(register_row.values[0])
+        bits = np.append(bits, register_row.values[0])
+        # bits.append(register_row.values[0])
         return bits, register_row.values[0], -1
 
     @staticmethod
     def rotate_right(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = [register_row.values[7]]
-        bits += register_row.values[0:7]
+        bits = np.append(bits, register_row.values[0:7])
+        # bits += register_row.values[0:7]
         return bits, register_row.values[7], -1
 
     @staticmethod
     def shift_left_zero(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
-        bits.append(False)
+        bits = np.append(bits, [False])
+        # bits.append(False)
         return bits, register_row.values[0], -1
 
     @staticmethod
     def shift_left_one(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
-        bits.append(True)
+        bits = np.append(bits, [True])
+        # bits.append(True)
         return bits, register_row.values[0], 0
 
     @staticmethod
     def shift_left_x(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
-        bits.append(register_row.values[7])
+        bits = np.append(bits, register_row.values[7])
+        # bits.append(register_row.values[7])
         return bits, register_row.values[0], -1
 
     @staticmethod
     def shift_left_a(register_row: Memory.MEMORY_IMPL, carry: bool = False) -> Tuple[List[bool], bool, int]:
         bits = register_row.values[1:8]
-        bits.append(bool(carry))
+        bits = np.append(bits, [bool(carry)])
+        # bits.append(bool(carry))
         return bits, register_row.values[0], 0
 
     @staticmethod
     def shift_right_zero(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
-        bits = [False]
-        bits += register_row.values[0:7]
+        bits = np.array([False])
+        bits = np.append(bits, register_row.values[0:7])
+        # bits += register_row.values[0:7]
         return bits, register_row.values[7], -1
 
     @staticmethod
     def shift_right_one(register_row: Memory.MEMORY_IMPL) -> Tuple[List[bool], bool, int]:
-        bits = [True]
+        bits = np.array([True])
         bits += register_row.values[0:7]
         return bits, register_row.values[7], 0
 
