@@ -51,9 +51,7 @@ class Memory(object):
             value = self.bounds(value)
             # automatically performs 2s comp if needed
             binary = np.binary_repr(value, width=8)
-            print(binary)
             self.values = np.array(list(binary), dtype=np.uint8)
-            print(self.values)
 
     class ArrayRow(MemoryRow):
         def __init__(self, width: int, default: bool = False) -> None:
@@ -84,7 +82,7 @@ class Memory(object):
     STACK_WIDTH = 10  # type: int
     STACK_LENGTH = 31  # type: int
 
-    MEMORY_IMPL = NumpyRow
+    MEMORY_IMPL = ArrayRow
 
     def __init__(self):
         self.REGISTERS = Memory.init_reg(Memory.REGISTER_WIDTH, Memory.NUM_REGISTERS)
