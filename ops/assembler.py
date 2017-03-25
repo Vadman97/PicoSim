@@ -26,6 +26,23 @@ class Line(object):
         "'h": 16
     }
 
+    @staticmethod
+    def convert_literal(x: int) -> int:
+        try:
+            val = None
+            found = False
+            for postfix, base in Line.NUMERIC_POSTFIXES.items():
+                if postfix in x:
+                    found = True
+                    # trim the 'b postfix
+                    val = int(x[:-2], base)
+            if not found:
+                # default hex
+                val = int(x, 16)
+        except ValueError:
+            val = x
+        return val
+
     def __init__(self, address: hex, instruction: str, tag: str):
         self.debug_string = "%d (tag %s): %s" % (address, tag, instruction)
         self.address = address
@@ -56,19 +73,7 @@ class Line(object):
                             x = x.strip()
                             # make sure its not blank, if its a numeric value convert to int
                             if len(x):
-                                try:
-                                    val = None
-                                    found = False
-                                    for postfix, base in Line.NUMERIC_POSTFIXES.items():
-                                        if postfix in x:
-                                            found = True
-                                            # trim the 'b postfix
-                                            val = int(x[:-2], base)
-                                    if not found:
-                                        # default hex
-                                        val = int(x, 16)
-                                except ValueError:
-                                    val = x
+                                val = Line.convert_literal(x)
                                 self.instruction_rest.append(val)
                         # update the length of this instruction we found
                         longest = len(instr_name)
@@ -80,7 +85,8 @@ class Line(object):
 
     def parse(self, constants: Dict[str, hex], tag_addresses: Dict[str, hex]):
         if self.instruction_name == "ADDRESS":
-            self.address = int(self.instruction_rest[0], 16)
+            # already converted from hex by the convert_literal calc
+            self.address = int(self.instruction_rest[0])
         else:
             for idx, each in enumerate(self.instruction_rest):
                 for x in [constants, tag_addresses]:

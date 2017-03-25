@@ -6,9 +6,7 @@ import inspect
 import operator
 import sys
 from functools import reduce
-from typing import List, Dict, Callable, Tuple, Union
-
-import numpy as np
+from typing import List, Dict, Callable, Union
 
 from system.memory import Memory
 from system.processor import Processor
@@ -32,90 +30,84 @@ class AssemblerDirective(Instruction):
 
 
 class BitwiseOperation(Instruction):
-    @staticmethod
-    def rotate_left(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
+    def rotate_left(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
         bits = register_row.values[1:8]
-        bits = np.append(bits, register_row.values[0])
-        # bits.append(register_row.values[0])
-        return bits, register_row.values[0], -1
+        bits.append(register_row.values[0])
+        self.proc.set_carry(register_row.values[0])
+        return bits
 
-    @staticmethod
-    def rotate_right(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
+    def rotate_right(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
         bits = [register_row.values[7]]
-        bits = np.append(bits, register_row.values[0:7])
-        # bits += register_row.values[0:7]
-        return bits, register_row.values[7], -1
+        bits += register_row.values[0:7]
+        self.proc.set_carry(register_row.values[7])
+        return bits
 
-    @staticmethod
-    def shift_left_zero(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
+    def shift_left_zero(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
         bits = register_row.values[1:8]
-        bits = np.append(bits, [False])
-        # bits.append(False)
-        return bits, register_row.values[0], -1
+        bits.append(False)
+        self.proc.set_carry(register_row.values[0])
+        return bits
 
-    @staticmethod
-    def shift_left_one(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
+    def shift_left_one(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
         bits = register_row.values[1:8]
-        bits = np.append(bits, [True])
-        # bits.append(True)
-        return bits, register_row.values[0], 0
+        bits.append(True)
+        self.proc.set_carry(register_row.values[0])
+        self.proc.set_zero(False)
+        return bits
 
-    @staticmethod
-    def shift_left_x(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
+    def shift_left_x(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
         bits = register_row.values[1:8]
-        bits = np.append(bits, register_row.values[7])
-        # bits.append(register_row.values[7])
-        return bits, register_row.values[0], -1
+        bits.append(register_row.values[7])
+        self.proc.set_carry(register_row.values[0])
+        return bits
 
-    @staticmethod
-    def shift_left_a(register_row: Memory.MEMORY_IMPL, carry: bool = False) -> Tuple[np.ndarray, bool, int]:
+    def shift_left_a(self, register_row: Memory.MEMORY_IMPL, carry: bool = False) -> List[bool]:
         bits = register_row.values[1:8]
-        bits = np.append(bits, [bool(carry)])
-        # bits.append(bool(carry))
-        return bits, register_row.values[0], 0
+        bits.append(bool(carry))
+        self.proc.set_carry(register_row.values[0])
+        self.proc.set_zero(False)
+        return bits
 
-    @staticmethod
-    def shift_right_zero(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
-        bits = np.array([False])
-        bits = np.append(bits, register_row.values[0:7])
-        # bits += register_row.values[0:7]
-        return bits, register_row.values[7], -1
+    def shift_right_zero(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
+        bits = [False]
+        bits += register_row.values[0:7]
+        self.proc.set_carry(register_row.values[7])
+        return bits
 
-    @staticmethod
-    def shift_right_one(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
-        bits = np.array([True])
-        bits = np.append(bits, register_row.values[0:7])
-        # bits += register_row.values[0:7]
-        return bits, register_row.values[7], 0
+    def shift_right_one(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
+        bits = [True]
+        bits += register_row.values[0:7]
+        self.proc.set_carry(register_row.values[7])
+        self.proc.set_zero(False)
+        return bits
 
-    @staticmethod
-    def shift_right_x(register_row: Memory.MEMORY_IMPL) -> Tuple[np.ndarray, bool, int]:
-        bits = np.array([register_row.values[0]])
-        bits = np.append(bits, register_row.values[0:7])
-        # bits += register_row.values[0:7]
-        return bits, register_row.values[7], -1
+    def shift_right_x(self, register_row: Memory.MEMORY_IMPL) -> List[bool]:
+        bits = [register_row.values[0]]
+        bits += register_row.values[0:7]
+        self.proc.set_carry(register_row.values[7])
+        return bits
 
-    @staticmethod
-    def shift_right_a(register_row: Memory.MEMORY_IMPL, carry: bool = False) -> Tuple[np.ndarray, bool, int]:
-        bits = np.array([bool(carry)])
-        bits = np.append(bits, register_row.values[0:7])
-        # bits += register_row.values[0:7]
-        return bits, register_row.values[7], 0
+    def shift_right_a(self, register_row: Memory.MEMORY_IMPL, carry: bool = False) -> List[bool]:
+        bits = [bool(carry)]
+        bits += register_row.values[0:7]
+        self.proc.set_carry(register_row.values[7])
+        self.proc.set_zero(False)
+        return bits
 
     OPS = {
-        "RL": rotate_left.__func__,
-        "RR": rotate_right.__func__,
-        "SL0": shift_left_zero.__func__,
-        "SL1": shift_left_one.__func__,
-        "SLX": shift_left_x.__func__,
-        "SR0": shift_right_zero.__func__,
-        "SR1": shift_right_one.__func__,
-        "SRX": shift_right_x.__func__,
-        "SLA": shift_left_a.__func__,
-        "SRA": shift_right_a.__func__,
-    }  # type: Dict[str, Callable[[int, int], Tuple[np.ndarray, bool, int]]]
+        "RL": rotate_left,
+        "RR": rotate_right,
+        "SL0": shift_left_zero,
+        "SL1": shift_left_one,
+        "SLX": shift_left_x,
+        "SR0": shift_right_zero,
+        "SR1": shift_right_one,
+        "SRX": shift_right_x,
+        "SLA": shift_left_a,
+        "SRA": shift_right_a,
+    }  # type: Dict[str, Callable[[Memory.MEMORY_IMPL], List[bool]]
 
-    def __init__(self, op: Callable[[int, int], Tuple[np.ndarray, bool, int]], args: List[Union[str, int]]):
+    def __init__(self, op: Callable[[Memory.MEMORY_IMPL], List[bool]], args: List[Union[str, int]]):
         self.operator = op
         self.register = args[0]
         self.proc = None  # type: Processor
@@ -125,20 +117,55 @@ class BitwiseOperation(Instruction):
         self.proc = proc
         self.reg_row = self.proc.memory.REGISTERS[self.register.lower()]  # retrieve register memory row
         if self.operator is BitwiseOperation.shift_left_a or self.operator is BitwiseOperation.shift_right_a:
-            bits, carry, zero = self.operator(self.reg_row, self.proc.external.carry)
+            bits = self.operator(self, self.reg_row, self.proc.external.carry)
         else:
-            bits, carry, zero = self.operator(self.reg_row)
+            bits = self.operator(self, self.reg_row)
         # directly set result to memory
         self.proc.memory.REGISTERS[self.register.lower()].values = bits
-        self.proc.set_carry(carry)
-        if zero != -1:
-            self.proc.set_zero(bool(zero))
 
         # increment pc
         self.proc.manager.next()
 
     def __repr__(self):
         return self.__class__.__name__ + " " + str(self.operator.__name__)
+
+
+class LogicOperation(Instruction):
+    # operators will perform operations on the one bit of the memory row
+    OPS = {
+        "AND": operator.and_,
+        "OR": operator.or_,
+        "XOR": operator.xor
+    }  # type: Dict[str, Callable[[bool, bool], bool]]
+
+    def __init__(self, op: Callable[[bool, bool], bool], args: List[Union[str, int]]):
+        self.operator = op
+        self.register = args[0]
+        if isinstance(args[1], str):
+            self.argument = args[1]
+            self.literal = False
+        else:
+            self.argument = Memory.MEMORY_IMPL(Memory.REGISTER_WIDTH, False)
+            self.argument.set_value(args[1])
+            self.literal = True
+
+    def exec(self, processor: Processor):
+        # retrieve the memory rows' binary directly without converting to decimal
+        reg_row = processor.memory.REGISTERS[self.register].values
+        if not self.literal:
+            # look up the register binary
+            bits = processor.memory.REGISTERS[self.argument].values
+        else:
+            # retrieve the converted literal as binary
+            bits = self.argument.values
+
+        zipped = zip(reg_row, bits)
+        bits = list(map(lambda t: self.operator(t[0], t[1]), zipped))
+        # set the memory row bits directly
+        processor.memory.REGISTERS[self.register].values = bits
+
+        # increment pc
+        processor.manager.next()
 
 
 def addc(a: int, b: int) -> int:
@@ -155,12 +182,9 @@ class ArithmeticOperation(Instruction):
         "ADD": operator.add,
         "ADDC": addc,
         "ADDCY": addc,
-        "AND": operator.and_,
-        "OR": operator.or_,
         "SUB": operator.sub,
         "SUBC": subc,
         "SUBCY": subc,
-        "XOR": operator.xor
     }  # type: Dict[str, Callable[[int, int], int]]
 
     def expand(self, arg):
@@ -177,6 +201,7 @@ class ArithmeticOperation(Instruction):
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):
+        # TODO implement using carry lookahead
         self.proc = proc
         self.args = map(self.expand, self.o_args)  # load register values
         val = reduce(self.operator, self.args)  # apply operator
@@ -192,11 +217,11 @@ class ArithmeticOperation(Instruction):
 
 class CompareOperation(Instruction):
     @staticmethod
-    def odd_parity(x: int) -> bool:
+    def odd_parity(v: int) -> bool:
         parity = True
-        while x:
+        while v:
             parity = not parity
-            x &= (x - 1)
+            v &= (v - 1)
 
         return parity
 
@@ -207,10 +232,10 @@ class CompareOperation(Instruction):
             self.proc.set_carry(True)
 
     def test(self, args):
-        x = args[0] & args[1]
-        if x:
+        v = args[0] & args[1]
+        if v:
             self.proc.set_zero(True)
-        self.proc.set_carry(CompareOperation.odd_parity(x))
+        self.proc.set_carry(CompareOperation.odd_parity(v))
 
     OPS = {
         "COMP": comp,
@@ -240,6 +265,7 @@ class CompareOperation(Instruction):
 
 
 class DataOperation(Instruction):
+    # TODO change all the get/set instructions to directly set binary as opposed to converting back and forth
     def fetch(self, args):
         self.proc.memory.set_register(args[0], self.proc.memory.fetch_data(args[1]))
 
@@ -324,9 +350,18 @@ class FlowOperation(Instruction):
     def jump_z(self):
         self.jump() if self.proc.external.zero is True else self.proc.manager.next()
 
-    # TODO JUMP@
     def jump_at(self):
-        pass
+        upper = self.proc.memory.REGISTERS[self.address_parts[0]].values
+        lower = self.proc.memory.REGISTERS[self.address_parts[1]].values
+        # 12 bit JUMP@ instruction
+        complete_row = Memory.MEMORY_IMPL(12, False)
+        # lower 4 bits of upper segment
+        complete_row.values = upper[3:7]
+        # all of the lower segment
+        complete_row.values.extend(lower)
+        # jump to the address value
+        self.address = complete_row.value
+        self.jump()
 
     def return_(self):
         self.proc.manager.jump(self.proc.memory.pop_stack() + Memory.PROGRAM_WIDTH)
@@ -397,9 +432,12 @@ class FlowOperation(Instruction):
 
     }  # type: Dict[str, Callable[[], None]]
 
-    def __init__(self, op: Callable[[], None], args: List[Union[hex, int]]):
+    def __init__(self, op: Callable[[], None], args: List[Union[hex, int, str]]):
         self.operator = op
-        self.address = int(args[0]) if len(args) else None
+        if self.operator is FlowOperation.jump_at:
+            self.address_parts = [args[0], args[1]]
+        else:
+            self.address = int(args[0]) if len(args) else None
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):

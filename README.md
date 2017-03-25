@@ -22,3 +22,5 @@ conversion of binary to int. This process can definitely be optimized.
 
 On an average machine, the simulation is on the order of 1000x slower than on FPGA (runs at 100 KHz).
 
+Arithmetic operations can be sped up by 3x creating carry-lookahead binary adders.
+

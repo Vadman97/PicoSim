@@ -111,61 +111,64 @@ class OperationTests(unittest.TestCase):
                 v1 = random.randint(0, MAX)
                 self.proc.memory.set_register('s1', v1)
                 self.proc.set_carry(False)
-                op.BitwiseOperation(o, ['s1']).exec(self.proc)
+                operation = op.BitwiseOperation(o, ['s1'])
+                operation.exec(self.proc)
                 r = Memory.MEMORY_IMPL(Memory.REGISTER_WIDTH)
                 r.set_value(v1)
-                r.values = o(r)[0]
+                r.values = o(operation, r)
                 self.assertEqual(self.proc.memory.fetch_register('s1'), r.value)
 
     def test_bitwise_ops(self):
+        dummy = op.BitwiseOperation(op.BitwiseOperation.OPS["RL"], ["DUMMY"])
+        dummy.proc = Processor()
         self.r.set_value(32)
-        self.r.values = op.BitwiseOperation.shift_right_zero(self.r)[0]
+        self.r.values = op.BitwiseOperation.shift_right_zero(dummy, self.r)
         self.assertEqual(self.r.value, 16)
 
         self.r.set_value(32)
-        self.r.values = op.BitwiseOperation.shift_left_zero(self.r)[0]
+        self.r.values = op.BitwiseOperation.shift_left_zero(dummy, self.r)
         self.assertEqual(self.r.value, 64)
 
         for i in range(0, ITERATIONS):
             v1 = random.randint(0, MAX)
             c = ((v1 << 1) | ((v1 & 0x80) >> 7)) % (MAX + 1)
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.rotate_left(self.r)[0]
+            self.r.values = op.BitwiseOperation.rotate_left(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             c = ((v1 >> 1) | ((v1 & 1) << 7))
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.rotate_right(self.r)[0]
+            self.r.values = op.BitwiseOperation.rotate_right(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             c = ((v1 << 1) & 0xFE) % (MAX + 1)
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.shift_left_zero(self.r)[0]
+            self.r.values = op.BitwiseOperation.shift_left_zero(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             c = ((v1 >> 1) & 0x7F) % (MAX + 1)
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.shift_right_zero(self.r)[0]
+            self.r.values = op.BitwiseOperation.shift_right_zero(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             c = ((v1 << 1) & 0xFE | 1) % (MAX + 1)
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.shift_left_one(self.r)[0]
+            self.r.values = op.BitwiseOperation.shift_left_one(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             c = ((v1 >> 1) & 0x7F | (1 << 7)) % (MAX + 1)
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.shift_right_one(self.r)[0]
+            self.r.values = op.BitwiseOperation.shift_right_one(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             c = ((v1 << 1) & 0xFE | (v1 & 1)) % (MAX + 1)
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.shift_left_x(self.r)[0]
+            self.r.values = op.BitwiseOperation.shift_left_x(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             c = ((v1 >> 1) & 0x7F | (v1 & 0x80)) % (MAX + 1)
             self.r.set_value(v1)
-            self.r.values = op.BitwiseOperation.shift_right_x(self.r)[0]
+            self.r.values = op.BitwiseOperation.shift_right_x(dummy, self.r)
             self.assertEqual(self.r.value, c)
 
             for b in [True, False]:
@@ -210,14 +213,20 @@ class ProcessorTests(unittest.TestCase):
         v2 = random.randint(0, MAX)
         self.proc.memory.set_register('s1', v1)
         self.proc.memory.set_register('s2', v2)
+        self.proc.memory.set_register('s4', v2)
         for o in op.ArithmeticOperation.OPS.values():
-            for i in range(0, 500 // len(op.ArithmeticOperation.OPS)):
+            for i in range(0, 330 // len(op.ArithmeticOperation.OPS)):
                 instr = op.ArithmeticOperation(o, ['s1', 's2'])
                 self.proc.add_instruction(instr)
 
         for o in op.BitwiseOperation.OPS.values():
-            for i in range(0, 500 // len(op.BitwiseOperation.OPS)):
+            for i in range(0, 330 // len(op.BitwiseOperation.OPS)):
                 instr = op.BitwiseOperation(o, ['s1'])
+                self.proc.add_instruction(instr)
+
+        for o in op.LogicOperation.OPS.values():
+            for i in range(0, 330 // len(op.LogicOperation.OPS)):
+                instr = op.LogicOperation(o, ['s4', 's2'])
                 self.proc.add_instruction(instr)
 
         # repeat these ops while s3 is not FF

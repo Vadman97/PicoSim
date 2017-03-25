@@ -37,15 +37,19 @@ class Memory(object):
                 binary = bin(value)[2:]
             return binary
 
+    # DO NOT USE POOR PERFORMANCE
     class NumpyRow(MemoryRow):
-        def __init__(self, width: int, default: bool = False) -> None:
-            super(Memory.NumpyRow, self).__init__(width, default)
+        WIDTH = 8
+        DEFAULT = False
+        BIN_MULT = np.array([1 << (8 - 1 - idx) for idx, _ in enumerate(range(8))])
+
+        def __init__(self) -> None:
+            super(Memory.NumpyRow, self).__init__(Memory.NumpyRow.WIDTH, Memory.NumpyRow.DEFAULT)
             self.values = np.array(np.zeros(self.width, np.uint8))
-            self.binary_multiplier = np.array([1 << (self.width - 1 - idx) for idx, _ in enumerate(range(self.width))])
 
         @property
         def value(self) -> int:
-            return int(np.sum(self.values * self.binary_multiplier))
+            return int(np.sum(self.values * Memory.NumpyRow.BIN_MULT))
 
         def set_value(self, value: int) -> None:
             value = self.bounds(value)
