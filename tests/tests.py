@@ -77,32 +77,37 @@ class OperationTests(unittest.TestCase):
         self.r = Memory.MEMORY_IMPL(Memory.REGISTER_WIDTH)
 
     def test_arithmetic_ops_stress(self):
-        for o in op.ArithmeticOperation.OPS.values():
+        for key, o in op.ArithmeticOperation.OPS.items():
+            eq = op.ArithmeticOperation.TESTING_EQUIVALENTS[key]
             for i in range(0, ITERATIONS):
                 v1 = random.randint(0, MAX)
                 v2 = random.randint(0, MAX)
                 self.proc.memory.set_register('s1', v1)
                 self.proc.memory.set_register('s2', v2)
+                print(v1)
+                print(v2)
                 op.ArithmeticOperation(o, ['s1', 's2']).exec(self.proc)
-                self.assertEqual(self.proc.memory.fetch_register('s1'), make_positive(o(v1, v2)))
+                self.assertEqual(self.proc.memory.fetch_register('s1'), make_positive(eq(v1, v2)))
 
     def test_arithmetic_ops_stress_const(self):
-        for o in op.ArithmeticOperation.OPS.values():
+        for key, o in op.ArithmeticOperation.OPS.items():
+            eq = op.ArithmeticOperation.TESTING_EQUIVALENTS[key]
             for i in range(0, ITERATIONS):
                 v1 = random.randint(0, MAX)
                 c1 = random.randint(0, MAX)
                 self.proc.memory.set_register('s1', v1)
                 op.ArithmeticOperation(o, ['s1', c1]).exec(self.proc)
-                self.assertEqual(self.proc.memory.fetch_register('s1'), make_positive(o(v1, c1)))
+                self.assertEqual(self.proc.memory.fetch_register('s1'), make_positive(eq(v1, c1)))
 
     def test_arithmetic_ops_stress_sum(self):
-        for o in op.ArithmeticOperation.OPS.values():
+        for key, o in op.ArithmeticOperation.OPS.items():
+            eq = op.ArithmeticOperation.TESTING_EQUIVALENTS[key]
             s = random.randint(1, 100)
             self.proc.memory.set_register('s1', s)
             for i in range(0, ITERATIONS):
                 v = random.randint(1, 10)
                 op.ArithmeticOperation(o, ['s1', v]).exec(self.proc)
-                s = make_positive(o(s, v))
+                s = make_positive(eq(s, v))
                 self.assertEqual(self.proc.memory.fetch_register('s1'), s)
 
     def test_bitwise_ops_stress(self):

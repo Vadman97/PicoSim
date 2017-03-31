@@ -6,7 +6,7 @@ import inspect
 import operator
 import sys
 from functools import reduce
-from typing import List, Dict, Callable, Union
+from typing import List, Dict, Callable, Union, Tuple
 
 from system.memory import Memory
 from system.processor import Processor
@@ -164,6 +164,9 @@ class LogicOperation(Instruction):
         # set the memory row bits directly
         processor.memory.REGISTERS[self.register].values = bits
 
+        # carry always set to 0 for these ops
+        processor.set_carry(False)
+
         # increment pc
         processor.manager.next()
 
@@ -176,7 +179,124 @@ def subc(a: int, b: int) -> int:
     return operator.sub(a, b)
 
 
+def full_adder(cin: bool, a: bool, b: bool) -> Tuple[bool, bool]:
+    s = a ^ b ^ cin
+    carry_out = (a & b) | (cin & (a ^ b))
+    return s, carry_out
+
+
+def ripple(a: List[bool], b: List[bool], cin: bool = False, invert_b: bool = False) -> List[bool]:
+    # allocate result bits
+    result = list(range(0, Memory.REGISTER_WIDTH))  # type: List[bool]
+    carry_wire = cin  # type: bool
+
+    # go backwards to preserve carry propagation
+    for i in range(max(len(a), len(b)) - 1, -1, -1):
+        # sign extend
+        if i < 8 - len(a):
+            a_bit = a[0]
+            b_bit = b[i]
+        elif i < 8 - len(b):
+            a_bit = a[i]
+            b_bit = b[0]
+        else:
+            a_bit = a[i]
+            b_bit = b[i]
+
+        if invert_b:
+            b_bit = not b_bit
+        print("A: " + str(a_bit) + " B: " + str(b_bit) + " C: " + str(carry_wire))
+        result[i], carry_wire = full_adder(carry_wire, a_bit, b_bit)
+
+    print("A: " + str(a))
+    print("B: " + str(b))
+    print("R: " + str(result))
+    print(cin)
+    print(invert_b)
+    return result
+
+
+def ripple_add(a: List[bool], b: List[bool]) -> List[bool]:
+    return ripple(a, b, cin=False, invert_b=False)
+
+
+def ripple_sub(a: List[bool], b: List[bool]) -> List[bool]:
+    return ripple(a, b, cin=True, invert_b=True)
+
+
+def ripple_add_c(a: List[bool], b: List[bool]) -> List[bool]:
+    return ripple_add(a, b)
+
+
+def ripple_sub_c(a: List[bool], b: List[bool]) -> List[bool]:
+    return ripple_sub(a, b)
+
+
 class ArithmeticOperation(Instruction):
+
+    OPS = {
+        "ADD": ripple_add,
+        "ADDC": ripple_add_c,
+        "ADDCY": ripple_add_c,
+        "SUB": ripple_sub,
+        "SUBC": ripple_sub_c,
+        "SUBCY": ripple_sub_c,
+    }  # type: Dict[str, Callable[[List[bool], List[bool]], List[bool]]]
+
+    TESTING_EQUIVALENTS = {
+        "ADD": operator.add,
+        "ADDC": operator.add,
+        "ADDCY": operator.add,
+        "SUB": operator.sub,
+        "SUBC": operator.sub,
+        "SUBCY": operator.sub,
+    }
+
+    def expand(self, arg):
+        if not isinstance(arg, int) and 's' in arg:
+            return self.proc.memory.fetch_register(arg)
+        else:
+            return arg
+
+    def __init__(self, op: Callable[[List[bool], List[bool]], List[bool]], args: List[Union[str, int]]):
+        self.operator = op
+        self.register = args[0]
+        if isinstance(args[1], str):
+            self.argument = args[1]
+            self.literal = False
+        else:
+            self.argument = Memory.MEMORY_IMPL(Memory.REGISTER_WIDTH, False)
+            self.argument.set_value(args[1])
+            self.literal = True
+        self.proc = None  # type: Processor
+        self.zero_bits = [False for _ in range(Memory.REGISTER_WIDTH)]  # type: List[bool]
+
+    def exec(self, proc: Processor):
+        self.proc = proc
+
+        first_bits = self.proc.memory.REGISTERS[self.register].values
+        if not self.literal:
+            # look up the register binary
+            second_bits = self.proc.memory.REGISTERS[self.argument].values
+        else:
+            # retrieve the converted literal as binary
+            second_bits = self.argument.values
+
+        print("Rippling")
+        result = self.operator(first_bits, second_bits)
+        # add the carry if needed
+        if self.operator is ripple_add_c or ripple_sub_c:
+            self.zero_bits[len(self.zero_bits) - 1] = self.proc.external.carry
+            print("Ripple again for carry bit")
+            result = ripple_add(result, self.zero_bits)
+
+        self.proc.memory.REGISTERS[self.register].values = result
+
+        # increment pc
+        self.proc.manager.next()
+
+
+class SlowArithmeticOperation(Instruction):
 
     OPS = {
         "ADD": operator.add,
@@ -186,6 +306,15 @@ class ArithmeticOperation(Instruction):
         "SUBC": subc,
         "SUBCY": subc,
     }  # type: Dict[str, Callable[[int, int], int]]
+
+    TESTING_EQUIVALENTS = {
+        "ADD": operator.add,
+        "ADDC": operator.add,
+        "ADDCY": operator.add,
+        "SUB": operator.sub,
+        "SUBC": operator.sub,
+        "SUBCY": operator.sub,
+    }
 
     def expand(self, arg):
         if not isinstance(arg, int) and 's' in arg:
@@ -201,7 +330,6 @@ class ArithmeticOperation(Instruction):
         self.proc = None  # type: Processor
 
     def exec(self, proc: Processor):
-        # TODO implement using carry lookahead
         self.proc = proc
         self.args = map(self.expand, self.o_args)  # load register values
         val = reduce(self.operator, self.args)  # apply operator
@@ -265,12 +393,17 @@ class CompareOperation(Instruction):
 
 
 class DataOperation(Instruction):
-    # TODO change all the get/set instructions to directly set binary as opposed to converting back and forth
     def fetch(self, args):
-        self.proc.memory.set_register(args[0], self.proc.memory.fetch_data(args[1]))
+        if self.proc.memory.REGISTER_WIDTH == self.proc.memory.DATA_WIDTH:
+            self.proc.memory.REGISTERS[args[0]] = self.proc.memory.DATA_MEMORY[args[1]]
+        else:
+            self.proc.memory.set_register(args[0], self.proc.memory.fetch_data(args[1]))
 
     def store(self, args):
-        self.proc.memory.store_data(args[1], self.proc.memory.fetch_register(args[0]))
+        if self.proc.memory.REGISTER_WIDTH == self.proc.memory.DATA_WIDTH:
+            self.proc.memory.DATA_MEMORY[args[1]] = self.proc.memory.REGISTERS[args[0]]
+        else:
+            self.proc.memory.store_data(args[1], self.proc.memory.fetch_register(args[0]))
 
     def input_(self, args):
         self.proc.set_port_id(args[1])
@@ -285,6 +418,7 @@ class DataOperation(Instruction):
         pass
 
     def load(self, args):
+        # load constant int (args[1] onto register args[0])
         self.proc.memory.set_register(args[0], args[1])
 
     OPS = {
