@@ -17,7 +17,11 @@ ITERATIONS = 10000
 
 
 def make_positive(a: int) -> int:
-    s = a if a > -1 else -(abs(a) % abs(MIN - 1)) + (1 << 8)
+    # s = a if a > -1 else -(abs(a) % abs(MIN - 1)) + (1 << 8)
+    if a >= 0:
+        s = a
+    else:
+        s = a + (MAX + 1)
     return s % (MAX + 1)
 
 
@@ -84,8 +88,6 @@ class OperationTests(unittest.TestCase):
                 v2 = random.randint(0, MAX)
                 self.proc.memory.set_register('s1', v1)
                 self.proc.memory.set_register('s2', v2)
-                print(v1)
-                print(v2)
                 op.ArithmeticOperation(o, ['s1', 's2']).exec(self.proc)
                 self.assertEqual(self.proc.memory.fetch_register('s1'), make_positive(eq(v1, v2)))
 

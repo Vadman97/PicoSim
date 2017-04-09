@@ -6,6 +6,7 @@ import inspect
 import operator
 import sys
 from functools import reduce
+
 from typing import List, Dict, Callable, Union, Tuple
 
 from system.memory import Memory
@@ -192,27 +193,21 @@ def ripple(a: List[bool], b: List[bool], cin: bool = False, invert_b: bool = Fal
 
     # go backwards to preserve carry propagation
     for i in range(max(len(a), len(b)) - 1, -1, -1):
-        # sign extend
-        if i < 8 - len(a):
-            a_bit = a[0]
-            b_bit = b[i]
-        elif i < 8 - len(b):
-            a_bit = a[i]
-            b_bit = b[0]
-        else:
-            a_bit = a[i]
-            b_bit = b[i]
+        # sign extend, should not be needed as long as the memory row has all 8 bits filled out
+        # if i < 8 - len(a):
+        #     a_bit = a[0]
+        #     b_bit = b[i]
+        # elif i < 8 - len(b):
+        #     a_bit = a[i]
+        #     b_bit = b[0]
+        # else:
+        a_bit = a[i]
+        b_bit = b[i]
 
         if invert_b:
             b_bit = not b_bit
-        print("A: " + str(a_bit) + " B: " + str(b_bit) + " C: " + str(carry_wire))
         result[i], carry_wire = full_adder(carry_wire, a_bit, b_bit)
 
-    print("A: " + str(a))
-    print("B: " + str(b))
-    print("R: " + str(result))
-    print(cin)
-    print(invert_b)
     return result
 
 
@@ -282,12 +277,10 @@ class ArithmeticOperation(Instruction):
             # retrieve the converted literal as binary
             second_bits = self.argument.values
 
-        print("Rippling")
         result = self.operator(first_bits, second_bits)
         # add the carry if needed
         if self.operator is ripple_add_c or ripple_sub_c:
             self.zero_bits[len(self.zero_bits) - 1] = self.proc.external.carry
-            print("Ripple again for carry bit")
             result = ripple_add(result, self.zero_bits)
 
         self.proc.memory.REGISTERS[self.register].values = result
@@ -296,6 +289,7 @@ class ArithmeticOperation(Instruction):
         self.proc.manager.next()
 
 
+# 67% slower than ArithmeticOperation
 class SlowArithmeticOperation(Instruction):
 
     OPS = {
